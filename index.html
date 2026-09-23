@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waitlist Sizing Simulator — Naive vs Exact with Rank Translation</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0b0e14; color: #e0e6ed;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px; max-width: 1700px; margin: auto;
+  }
+  h1, h2, h3 { color: #8ab4f8; }
+  h1 { border-bottom: 2px solid #2a3a5a; padding-bottom: 10px; margin-bottom: 15px; }
+  .subtitle { color: #9aaec9; font-size: 0.95rem; margin-bottom: 20px; line-height: 1.5; }
+  .subtitle code { background: #1f2a3a; padding: 1px 6px; border-radius: 4px; color: #ffd700; font-size: 0.88rem; }
+
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    background: #1a202c; padding: 14px 18px; border-radius: 10px; margin-bottom: 18px;
+  }
+  .controls button {
+    background: #2a4a7a; color: white; border: none;
+    padding: 9px 20px; border-radius: 6px; font-weight: bold; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .controls button:hover { background: #3a6aaa; }
+  .controls button.alt { background: #4a3a1a; }
+  .controls button.alt:hover { background: #6a5a2a; }
+  .controls button.gen { background: #1a5a3a; }
+  .controls button.gen:hover { background: #2a7a4a; }
+  .controls label { display: flex; align-items: center; gap: 6px; color: #b0c4de; font-size: 0.9rem; }
+  .controls input {
+    background: #2a3344; border: 1px solid #4a5a7a; color: #e0e6ed;
+    padding: 5px 8px; border-radius: 4px; width: 82px;
+  }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px; background: #161e2b; padding: 14px; border-radius: 10px; margin-bottom: 18px;
+  }
+  .stat-card {
+    background: #1f2a3a; padding: 8px 10px; border-radius: 8px; text-align: center;
+  }
+  .stat-card .label { font-size: 0.72rem; color: #9aaec9; text-transform: uppercase; letter-spacing: 0.3px; }
+  .stat-card .value { font-size: 1.15rem; font-weight: bold; color: #8ab4f8; margin-top: 2px; }
+  .stat-card .value.gold { color: #ffd700; }
+  .stat-card .value.green { color: #6fcf97; }
+  .stat-card .value.orange { color: #f2a365; }
+  .stat-card .value.pink { color: #f28b8b; }
+  .stat-card .value.red { color: #ff6b6b; }
+
+  .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 18px 0; }
+  .card {
+    background: #141b26; border-radius: 10px; padding: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .card h3 { color: #b0c4de; margin-top: 0; border-bottom: 1px solid #2a3a5a; padding-bottom: 6px; font-size: 1rem; }
+  .chart-container { position: relative; height: 260px; }
+
+  /* ===== Shortlist visualization ===== */
+  .shortlist-container {
+    background: #141b26; border-radius: 10px; padding: 16px;
+    margin: 18px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .shortlist-container h3 {
+    color: #b0c4de; margin: 0 0 12px 0;
+    border-bottom: 1px solid #2a3a5a; padding-bottom: 6px; font-size: 1rem;
+  }
+  .shortlist-row {
+    display: flex; flex-wrap: nowrap; align-items: center;
+    gap: 2px; overflow-x: auto; padding: 8px 0;
+    border-bottom: 1px solid #1f2a3a;
+  }
+  .shortlist-row:last-child { border-bottom: none; }
+  .row-label {
+    min-width: 130px; font-size: 0.82rem; color: #b0c4de;
+    font-weight: bold; padding-right: 10px;
+    flex-shrink: 0;
+  }
+  .slot {
+    width: 14px; height: 34px; border-radius: 3px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.58rem; font-weight: bold;
+    cursor: pointer; transition: transform 0.15s;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .slot:hover { transform: scaleY(1.15); z-index: 10; }
+  .slot.elig {
+    background: linear-gradient(180deg, #2a5a3a, #1a3a2a);
+    border: 1px solid #4a8a5a; color: #b0e0b0;
+  }
+  .slot.elim {
+    background: linear-gradient(180deg, #5a2a2a, #3a1a1a);
+    border: 1px solid #8a4a4a; color: #f28b8b;
+  }
+  .slot.threshold {
+    box-shadow: inset 0 0 0 2px #ffd700;
+  }
+  .slot.hole {
+    background: repeating-linear-gradient(
+      45deg, #2a1a1a, #2a1a1a 3px, #1a0a0a 3px, #1a0a0a 6px
+    );
+    border: 1px dashed #5a3a3a; color: #6a4a4a;
+    opacity: 0.55;
+  }
+  .slot.empty {
+    background: #0d1219; border: 1px dashed #2a3a5a;
+  }
+  .threshold-marker {
+    width: 3px; height: 40px; background: #ffd700;
+    margin: 0 3px; flex-shrink: 0;
+    box-shadow: 0 0 8px #ffd700;
+    border-radius: 2px;
+  }
+  .deficit-bracket {
+    display: inline-flex; align-items: center;
+    color: #ff6b6b; font-weight: bold; font-size: 0.75rem;
+    margin-left: 6px; padding: 2px 8px;
+    background: rgba(255,107,107,0.15);
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .gain-bracket {
+    display: inline-flex; align-items: center;
+    color: #ffd700; font-weight: bold; font-size: 0.75rem;
+    margin-left: 6px; padding: 2px 8px;
+    background: rgba(255,215,0,0.12);
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .legend-inline {
+    display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px;
+    font-size: 0.78rem; color: #9aaec9;
+  }
+  .legend-inline span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch {
+    width: 14px; height: 14px; border-radius: 3px; display: inline-block;
+  }
+
+  .info-box {
+    background: #1f2a3a; border-left: 4px solid #ffd700;
+    padding: 14px 18px; border-radius: 8px; margin: 18px 0;
+  }
+  .info-box h3 { margin: 0 0 6px 0; color: #ffd700; font-size: 1rem; }
+  .info-box p { margin: 4px 0; color: #b0c4de; line-height: 1.6; font-size: 0.9rem; }
+  .info-box .math { color: #ffd700; font-family: 'Courier New', monospace; font-size: 0.88rem; }
+
+  .flex-tables { display: flex; flex-wrap: wrap; gap: 18px; margin: 18px 0; }
+  .table-wrap {
+    flex: 1 1 45%; background: #141b26; border-radius: 10px; padding: 14px;
+    max-height: 460px; overflow-y: auto;
+  }
+  .table-wrap h3 { margin-top: 0; color: #b0c4de; border-bottom: 1px solid #2a3a5a; padding-bottom: 6px; font-size: 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th {
+    text-align: left; padding: 6px 5px; background: #1f2a3a; color: #b0c4de;
+    position: sticky; top: 0; z-index: 2;
+  }
+  td { padding: 4px 5px; border-bottom: 1px solid #1f2a3a; }
+  tr.highlight-target td { background: rgba(255,215,0,0.15); font-weight: bold; }
+  tr.hole-row td { background: rgba(255,107,107,0.08); color: #f28b8b; }
+  .badge {
+    display: inline-block; padding: 1px 7px; border-radius: 12px;
+    font-size: 0.68rem; font-weight: bold;
+  }
+  .badge-naive { background: #4a1a1a; color: #f28b8b; }
+  .badge-exact { background: #1a4a1a; color: #6fcf97; }
+  .badge-target { background: #4a3a1a; color: #ffd700; }
+  .badge-warn { background: #4a1a1a; color: #ff6b6b; }
+  .badge-elim { background: #3a1a1a; color: #f28b8b; }
+  .badge-elig { background: #1a3a1a; color: #6fcf97; }
+
+  footer {
+    margin-top: 30px; padding: 15px; border-top: 1px solid #2a3a5a;
+    color: #7a8a9a; font-size: 0.8rem; text-align: center; line-height: 1.6;
+  }
+  footer a { color: #8ab4f8; }
+
+  @media (max-width: 900px) {
+    .grid-2col { grid-template-columns: 1fr; }
+    .flex-tables { flex-direction: column; }
+    .table-wrap { max-height: 320px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Waitlist Sizing Simulator — Naive vs Exact with Rank Translation</h1>
+<p class="subtitle">
+  Companion to <em>“Why waitlists need to be longer than you think: a classroom note on deferred verification.”</em><br>
+  A shortlist of <code>m</code> candidates is ranked, eligibility is verified only <em>after</em> ranking,
+  and non-eligible candidates leave <strong>“holes”</strong> that translate eligible ones upward.
+</p>
+
+<div class="controls">
+  <button class="gen" onclick="drawShortlist()">🎲 Draw shortlist</button>
+  <button onclick="computeAll()">🔄 Compute sizing</button>
+  <button class="alt" onclick="exportCSV()">⬇ Export CSV</button>
+  <label>N: <input type="number" id="inN" value="743" min="10" max="100000"></label>
+  <label>m: <input type="number" id="inM" value="60" min="1" max="50000"></label>
+  <label>P: <input type="number" id="inP" value="30" min="1" max="50000"></label>
+  <label>E: <input type="number" id="inE" value="30" min="0" max="100000"></label>
+  <label>α: <input type="number" id="inAlpha" value="0.01" min="0.001" max="0.5" step="0.001"></label>
+  <label>Seed: <input type="number" id="inSeed" value="42" min="0" max="99999"></label>
+</div>
+
+<div class="stats">
+  <div class="stat-card"><div class="label">N</div><div class="value" id="stN">743</div></div>
+  <div class="stat-card"><div class="label">m</div><div class="value" id="stM">60</div></div>
+  <div class="stat-card"><div class="label">P</div><div class="value" id="stP">30</div></div>
+  <div class="stat-card"><div class="label">E</div><div class="value orange" id="stE">30</div></div>
+  <div class="stat-card"><div class="label">E[K]</div><div class="value green" id="stEK">—</div></div>
+  <div class="stat-card"><div class="label">σ<sub>K</sub></div><div class="value green" id="stSK">—</div></div>
+  <div class="stat-card"><div class="label">P(K &lt; P)</div><div class="value red" id="stDeficitRisk">—</div></div>
+  <div class="stat-card"><div class="label">E[Δ]</div><div class="value pink" id="stDeficit">—</div></div>
+  <div class="stat-card"><div class="label">Naive w</div><div class="value pink" id="stNaive">—</div></div>
+  <div class="stat-card"><div class="label">Exact w*</div><div class="value gold" id="stExact">—</div></div>
+  <div class="stat-card"><div class="label">Ratio</div><div class="value gold" id="stRatio">—</div></div>
+  <div class="stat-card"><div class="label">Feasible?</div><div class="value green" id="stFeasible">—</div></div>
+</div>
+
+<!-- ============ SHORTLIST VISUALIZATION ============ -->
+<div class="shortlist-container">
+  <h3>👁️ Shortlist visualization — where are the holes?</h3>
+
+  <!-- Row 1: initial ranking (by merit) -->
+  <div style="margin-bottom: 6px; color: #b0c4de; font-size: 0.85rem; font-weight: bold;">
+    1. Initial shortlist, ranked by merit (left = best)
+  </div>
+  <div class="shortlist-row" id="rowInitial"></div>
+
+  <!-- Row 2: after eligibility verification -->
+  <div style="margin: 14px 0 6px 0; color: #b0c4de; font-size: 0.85rem; font-weight: bold;">
+    2. After eligibility verification — <span style="color:#f28b8b;">non-eligible candidates leave holes</span>
+  </div>
+  <div class="shortlist-row" id="rowAfterVerif"></div>
+
+  <!-- Row 3: after elimination (compacted) -->
+  <div style="margin: 14px 0 6px 0; color: #b0c4de; font-size: 0.85rem; font-weight: bold;">
+    3. After elimination — <span style="color:#6fcf97;">eligible candidates collapse upward</span>
+  </div>
+  <div class="shortlist-row" id="rowCompacted"></div>
+
+  <!-- Row 4: final admission (top P) -->
+  <div style="margin: 14px 0 6px 0; color: #b0c4de; font-size: 0.85rem; font-weight: bold;">
+    4. Final admission — top <span style="color:#ffd700;">P = <span id="labelP">30</span></span> eligible
+  </div>
+  <div class="shortlist-row" id="rowFinal"></div>
+
+  <div class="legend-inline">
+    <span><span class="swatch" style="background: linear-gradient(180deg,#2a5a3a,#1a3a2a); border:1px solid #4a8a5a;"></span> Eligible</span>
+    <span><span class="swatch" style="background: linear-gradient(180deg,#5a2a2a,#3a1a1a); border:1px solid #8a4a4a;"></span> Non-eligible</span>
+    <span><span class="swatch" style="background: repeating-linear-gradient(45deg,#2a1a1a,#2a1a1a 3px,#1a0a0a 3px,#1a0a0a 6px); border:1px dashed #5a3a3a;"></span> Hole (removed)</span>
+    <span><span class="swatch" style="background:#0d1219; border:1px dashed #2a3a5a;"></span> Empty slot</span>
+    <span><span class="swatch" style="background:#ffd700; width:4px;"></span> P threshold</span>
+  </div>
+  <p style="font-size: 0.78rem; color:#7a8a9a; margin-top: 10px; line-height: 1.5;">
+    Hover a slot to see the candidate's rank, status, and translation. The number of holes above
+    rank <code>P</code> determines how much the P-th eligible candidate must be pulled from the
+    waitlist. Each hole = one extra waitlist slot needed.
+  </p>
+</div>
+
+<div class="grid-2col">
+  <div class="card">
+    <h3>📊 Distribution of K ~ Hypergeometric(N, E, m)</h3>
+    <div class="chart-container"><canvas id="chDistK"></canvas></div>
+    <p style="font-size:0.78rem; color:#7a8a9a; text-align:center;">
+      Red bars: deficit region <code>K &lt; P</code>.
+    </p>
+  </div>
+  <div class="card">
+    <h3>📉 Naive vs Exact residual risk</h3>
+    <div class="chart-container"><canvas id="chCompare"></canvas></div>
+    <p style="font-size:0.78rem; color:#7a8a9a; text-align:center;">
+      Blue: exact <code>P(R<sub>w</sub> &gt; 0)</code>. Red dashed: naive <code>P(Δ &gt; w)</code>.
+    </p>
+  </div>
+</div>
+
+<div class="grid-2col">
+  <div class="card">
+    <h3>🌡️ Sensitivity to E (feasibility frontier)</h3>
+    <div class="chart-container"><canvas id="chSensitivity"></canvas></div>
+    <p style="font-size:0.78rem; color:#7a8a9a; text-align:center;">
+      <code>P(K &lt; P)</code> as a function of <code>E</code>.
+    </p>
+  </div>
+  <div class="card">
+    <h3>🎯 Exact w* as a function of α</h3>
+    <div class="chart-container"><canvas id="chWStar"></canvas></div>
+    <p style="font-size:0.78rem; color:#7a8a9a; text-align:center;">
+      Minimum waitlist size achieving residual risk <code>≤ α</code>.
+    </p>
+  </div>
+</div>
+
+<div class="info-box">
+  <h3>🔵 Why holes matter for the waitlist</h3>
+  <p>
+    Suppose the shortlist has <code>U</code> non-eligible candidates. These <code>U</code> candidates
+    create <code>U</code> holes when removed. Each hole above the P-th rank means one additional
+    eligible candidate must be pulled from the waitlist to fill the P positions. That is precisely
+    why the naive rule <code>P(Δ &gt; w) ≤ α</code> under-sizes: it counts holes as if they were
+    automatically filled by eligible candidates.
+  </p>
+  <p class="math">
+    U = m − K  ·  # holes above P = max(0, P − K) = Δ  ·  residual deficit R<sub>w</sub> = max(0, Δ − K<sub>w</sub>)
+  </p>
+</div>
+
+<div class="flex-tables">
+  <div class="table-wrap">
+    <h3>📋 Naive vs exact for several targets α</h3>
+    <table>
+      <thead><tr>
+        <th>Target α</th><th>Naive w</th><th>Exact w*</th><th>Ratio</th><th>Risk at naive w</th>
+      </tr></thead>
+      <tbody id="tbCompare"></tbody>
+    </table>
+  </div>
+  <div class="table-wrap">
+    <h3>🕳️ Simulated shortlist — holes per candidate</h3>
+    <table>
+      <thead><tr>
+        <th>Rank</th><th>Status</th><th>Holes above</th><th>New rank</th><th>Gain</th><th>σ²(r)</th>
+      </tr></thead>
+      <tbody id="tbHoles"></tbody>
+    </table>
+  </div>
+</div>
+
+<footer>
+  <p>
+    Companion simulator for the Teacher's Corner note. Shortlist is sampled without replacement;
+    eligible set is sampled uniformly. The naive rule is <code>min{w : P(Δ &gt; w) ≤ α}</code>;
+    the exact rule is <code>min{w : P(R<sub>w</sub> &gt; 0) ≤ α}</code>.
+  </p>
+  <p>MIT License · Source available on request</p>
+</footer>
+
+<script>
+/* ============================================================
+   MATH CORE
+   ============================================================ */
+function logGamma(z) {
+  if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z);
+  z -= 1;
+  const x = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+             771.32342877765313, -176.61502916214059, 12.507343278686905,
+             -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  let y = z + 1;
+  let g = x[0];
+  for (let i = 1; i < x.length; i++) g += x[i] / (z + i);
+  return Math.log(2 * Math.PI) / 2 + (z + 0.5) * Math.log(y) - y + Math.log(g);
+}
+function logComb(n, k) {
+  if (k < 0 || k > n) return -Infinity;
+  return logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1);
+}
+function hypergeomPMF(k, N, E, m) {
+  if (k < 0 || k > E || k > m || (m - k) > (N - E) || (m - k) < 0) return 0;
+  return Math.exp(logComb(E, k) + logComb(N - E, m - k) - logComb(N, m));
+}
+function hypergeomCDF(k, N, E, m) {
+  if (k < 0) return 0;
+  let s = 0;
+  const kMax = Math.min(k, E, m);
+  for (let i = 0; i <= kMax; i++) s += hypergeomPMF(i, N, E, m);
+  return Math.min(s, 1);
+}
+function kSupport(N, E, m) {
+  return { jmin: Math.max(0, m - (N - E)), jmax: Math.min(E, m) };
+}
+function deficitRisk(N, E, m, P) { return hypergeomCDF(P - 1, N, E, m); }
+function naiveRisk(w, N, E, m, P) { return hypergeomCDF(P - w - 1, N, E, m); }
+function expectedDeficit(N, E, m, P) {
+  let s = 0;
+  const { jmin, jmax } = kSupport(N, E, m);
+  for (let k = jmin; k < Math.min(P, jmax + 1); k++) s += (P - k) * hypergeomPMF(k, N, E, m);
+  return s;
+}
+function exactRisk(w, N, E, m, P) {
+  const { jmin, jmax } = kSupport(N, E, m);
+  const kUp = Math.min(P - 1, jmax);
+  let s = 0;
+  for (let k = jmin; k <= kUp; k++) {
+    const pk = hypergeomPMF(k, N, E, m);
+    if (pk < 1e-15) continue;
+    s += pk * hypergeomCDF(P - k - 1, N - m, E - k, w);
+  }
+  return Math.min(s, 1);
+}
+function naiveW(alpha, N, E, m, P) {
+  for (let w = 0; w <= N - m; w++) if (naiveRisk(w, N, E, m, P) <= alpha) return w;
+  return N - m;
+}
+function exactW(alpha, N, E, m, P) {
+  if (E < P) return null;
+  if (exactRisk(0, N, E, m, P) <= alpha) return 0;
+  let lo = 0, hi = N - m;
+  if (exactRisk(hi, N, E, m, P) > alpha) return null;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (exactRisk(mid, N, E, m, P) <= alpha) hi = mid;
+    else lo = mid;
+  }
+  return hi;
+}
+function varianceTranslation(r, m, U) {
+  if (m <= 2) return 0;
+  const pU = U / (m - 1);
+  return Math.max((r - 1) * pU * (1 - pU) * (m - r) / (m - 2), 0);
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let charts = {};
+let current = {};
+let shortlist = []; // simulated shortlist
+
+/* ============================================================
+   SHORTLIST GENERATION
+   ============================================================ */
+function drawShortlist() {
+  const N = parseInt(document.getElementById('inN').value);
+  const m = parseInt(document.getElementById('inM').value);
+  const P = parseInt(document.getElementById('inP').value);
+  const E = parseInt(document.getElementById('inE').value);
+  const seed = parseInt(document.getElementById('inSeed').value);
+
+  if (m > N || P > m || E > N) {
+    alert('Invalid: require m ≤ N, P ≤ m, E ≤ N.');
+    return;
+  }
+
+  function rng(s) {
+    let x = s;
+    return () => { x = (x * 9301 + 49297) % 233280; return x / 233280; };
+  }
+  const rand = rng(seed);
+
+  // Eligible set: choose E indices among N (without replacement)
+  const eligibleIdx = new Set();
+  let attempts = 0;
+  while (eligibleIdx.size < E && attempts < N * 20) {
+    eligibleIdx.add(Math.floor(rand() * N));
+    attempts++;
+  }
+
+  // Shortlist: choose m indices among N (without replacement), independently
+  const shortlistIdx = new Set();
+  attempts = 0;
+  while (shortlistIdx.size < m && attempts < N * 20) {
+    shortlistIdx.add(Math.floor(rand() * N));
+    attempts++;
+  }
+
+  // Build shortlist array sorted by "merit" (random score)
+  shortlist = [];
+  shortlistIdx.forEach(idx => {
+    shortlist.push({
+      idx,
+      merit: rand(),
+      eligible: eligibleIdx.has(idx)
+    });
+  });
+  shortlist.sort((a, b) => b.merit - a.merit);
+
+  // Compute K, U, translation
+  const K = shortlist.filter(c => c.eligible).length;
+  const U = m - K;
+
+  let holes = 0;
+  shortlist.forEach((c, i) => {
+    c.rank = i + 1;
+    c.var = varianceTranslation(c.rank, m, U);
+    c.holesAbove = holes;
+    if (c.eligible) {
+      c.newRank = c.rank - holes;
+      c.gain = holes;
+    } else {
+      c.newRank = null;
+      c.gain = 0;
+      holes++;
+    }
+  });
+
+  current.shortlist = shortlist;
+  current.K = K;
+  current.U = U;
+  current.aboveP = shortlist.slice(0, P);
+  current.holesAboveP = current.aboveP.filter(c => !c.eligible).length;
+
+  renderShortlistVisualization();
+  renderHolesTable();
+
+  // Also recompute sizing metrics for these params
+  computeAll();
+}
+
+/* ============================================================
+   SHORTLIST VISUALIZATION
+   ============================================================ */
+function renderShortlistVisualization() {
+  const N = parseInt(document.getElementById('inN').value);
+  const m = parseInt(document.getElementById('inM').value);
+  const P = parseInt(document.getElementById('inP').value);
+  document.getElementById('labelP').textContent = P;
+
+  const rowInit = document.getElementById('rowInitial');
+  const rowVerif = document.getElementById('rowAfterVerif');
+  const rowCompact = document.getElementById('rowCompacted');
+  const rowFinal = document.getElementById('rowFinal');
+
+  rowInit.innerHTML = '';
+  rowVerif.innerHTML = '';
+  rowCompact.innerHTML = '';
+  rowFinal.innerHTML = '';
+
+  // Cap the number of slots displayed for readability
+  const maxDisplay = 120;
+  const displayM = Math.min(m, maxDisplay);
+  const truncated = m > maxDisplay;
+  const stride = truncated ? m / maxDisplay : 1;
+
+  // Build displayed slots
+  for (let i = 0; i < displayM; i++) {
+    const realIdx = truncated ? Math.floor(i * stride) : i;
+    const c = shortlist[realIdx];
+    if (!c) continue;
+
+    // Add P threshold marker
+    if (realIdx === P) {
+      const marker = document.createElement('div');
+      marker.className = 'threshold-marker';
+      marker.title = `P = ${P} threshold`;
+      rowInit.appendChild(marker.cloneNode());
+      rowVerif.appendChild(marker.cloneNode());
+      rowCompact.appendChild(marker.cloneNode());
+      rowFinal.appendChild(marker.cloneNode());
+    }
+
+    // --- Row 1: initial
+    const s1 = document.createElement('div');
+    s1.className = 'slot elig'; // neutral color for initial (unknown status)
+    s1.style.background = 'linear-gradient(180deg, #3a4a6a, #2a3a5a)';
+    s1.style.borderColor = '#5a7aaa';
+    s1.textContent = realIdx + 1;
+    s1.title = `Rank ${realIdx + 1} (merit)`;
+    if (realIdx === P - 1) s1.classList.add('threshold');
+    rowInit.appendChild(s1);
+
+    // --- Row 2: after verification (color by eligibility)
+    const s2 = document.createElement('div');
+    s2.className = 'slot ' + (c.eligible ? 'elig' : 'elim');
+    s2.textContent = realIdx + 1;
+    s2.title = `Rank ${realIdx + 1} — ${c.eligible ? 'Eligible' : 'Non-eligible'}`;
+    if (realIdx === P - 1) s2.classList.add('threshold');
+    rowVerif.appendChild(s2);
+
+    // --- Row 3: after elimination (holes for non-eligible, compacted for eligible)
+    const s3 = document.createElement('div');
+    if (c.eligible) {
+      s3.className = 'slot elig';
+      s3.textContent = c.newRank;
+      s3.title = `Rank ${realIdx + 1} → new rank ${c.newRank} (gained ${c.gain})`;
+    } else {
+      s3.className = 'slot hole';
+      s3.textContent = '·';
+      s3.title = `Rank ${realIdx + 1} removed — hole`;
+    }
+    rowCompact.appendChild(s3);
+
+    // --- Row 4: final admission (top P eligible)
+    if (c.eligible && c.newRank <= P) {
+      const s4 = document.createElement('div');
+      s4.className = 'slot elig';
+      s4.style.background = 'linear-gradient(180deg, #4a8a5a, #2a5a3a)';
+      s4.textContent = c.newRank;
+      s4.title = `Admitted at rank ${c.newRank}`;
+      rowFinal.appendChild(s4);
+    } else if (realIdx < P) {
+      const s4 = document.createElement('div');
+      s4.className = 'slot empty';
+      s4.textContent = '';
+      s4.title = 'Unfilled — deficit';
+      rowFinal.appendChild(s4);
+    }
+  }
+
+  if (truncated) {
+    const note = document.createElement('div');
+    note.style.cssText = 'color:#7a8a9a; font-size:0.75rem; padding: 6px 0;';
+    note.textContent = `(displaying ~${maxDisplay} of ${m} slots)`;
+    rowInit.parentElement.appendChild(note);
+  }
+
+  // Deficit bracket
+  const K = current.K;
+  const deficits = Math.max(0, P - K);
+  if (deficits > 0) {
+    const b = document.createElement('div');
+    b.className = 'deficit-bracket';
+    b.textContent = `← deficit = ${deficits}`;
+    rowFinal.appendChild(b);
+  } else {
+    const b = document.createElement('div');
+    b.className = 'gain-bracket';
+    b.textContent = `← K = ${K} ≥ P, no deficit`;
+    rowFinal.appendChild(b);
+  }
+}
+
+/* ============================================================
+   HOLES TABLE
+   ============================================================ */
+function renderHolesTable() {
+  const P = parseInt(document.getElementById('inP').value);
+  const m = parseInt(document.getElementById('inM').value);
+  const tbody = document.getElementById('tbHoles');
+  let html = '';
+  const N = parseInt(document.getElementById('inN').value);
+
+  // Show first P+10 candidates
+  const limit = Math.min(m, P + 10);
+  shortlist.slice(0, limit).forEach(c => {
+    const isHole = !c.eligible;
+    const cls = isHole ? 'hole-row' : '';
+    const badge = c.eligible
+      ? '<span class="badge badge-elig">Eligible</span>'
+      : '<span class="badge badge-elim">Non-eligible</span>';
+    const newRank = c.eligible ? c.newRank : '—';
+    const gain = c.eligible ? '+' + c.gain : '—';
+    html += `<tr class="${cls}">
+      <td>${c.rank}</td>
+      <td>${badge}</td>
+      <td>${c.holesAbove}</td>
+      <td>${newRank}</td>
+      <td>${gain}</td>
+      <td>${c.var.toFixed(3)}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+/* ============================================================
+   COMPUTE SIZING
+   ============================================================ */
+function computeAll() {
+  const N = parseInt(document.getElementById('inN').value);
+  const m = parseInt(document.getElementById('inM').value);
+  const P = parseInt(document.getElementById('inP').value);
+  const E = parseInt(document.getElementById('inE').value);
+  const alpha = parseFloat(document.getElementById('inAlpha').value);
+
+  if (E < 0 || E > N || m > N || P > m) {
+    alert('Invalid parameters: require 0 ≤ E ≤ N, m ≤ N, P ≤ m.');
+    return;
+  }
+
+  const muK = m * E / N;
+  const varK = m * (E / N) * (1 - E / N) * (N - m) / (N - 1);
+  const sigmaK = Math.sqrt(varK);
+  const defRisk = deficitRisk(N, E, m, P);
+  const expDef = expectedDeficit(N, E, m, P);
+  const wN = naiveW(alpha, N, E, m, P);
+  const wE = exactW(alpha, N, E, m, P);
+  const feasible = (E >= P);
+  const ratio = (wE !== null && wN > 0) ? (wE / wN) : (wE !== null ? '∞' : '—');
+
+  current = { ...current, N, m, P, E, alpha, muK, sigmaK, defRisk, expDef, wN, wE, feasible };
+
+  document.getElementById('stN').textContent = N;
+  document.getElementById('stM').textContent = m;
+  document.getElementById('stP').textContent = P;
+  document.getElementById('stE').textContent = E;
+  document.getElementById('stEK').textContent = muK.toFixed(2);
+  document.getElementById('stSK').textContent = sigmaK.toFixed(3);
+  document.getElementById('stDeficitRisk').textContent = defRisk < 1e-4 ? '<1e-4' : defRisk.toFixed(4);
+  document.getElementById('stDeficit').textContent = expDef.toFixed(2);
+  document.getElementById('stNaive').textContent = wN;
+  document.getElementById('stExact').textContent = wE === null ? '—' : wE;
+  document.getElementById('stRatio').textContent = typeof ratio === 'number' ? ratio.toFixed(2) : ratio;
+  const feasEl = document.getElementById('stFeasible');
+  feasEl.textContent = feasible ? 'Yes' : 'No (E < P)';
+  feasEl.className = 'value ' + (feasible ? 'green' : 'red');
+
+  drawDistK(N, E, m, P);
+  drawCompare(N, E, m, P, alpha, wN, wE);
+  drawSensitivity(N, m, P, E);
+  drawWStar(N, E, m, P, alpha);
+  fillCompareTable(N, E, m, P);
+}
+
+/* ============================================================
+   CHARTS
+   ============================================================ */
+const chartOpts = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { labels: { color: '#b0c4de', font: { size: 11 } } } },
+  scales: {
+    x: { grid: { color: '#2a3a5a' }, ticks: { color: '#b0c4de', font: { size: 10 } } },
+    y: { grid: { color: '#2a3a5a' }, ticks: { color: '#b0c4de', font: { size: 10 } } }
+  }
+};
+
+function drawDistK(N, E, m, P) {
+  const { jmin, jmax } = kSupport(N, E, m);
+  const mu = m * E / N;
+  const sd = Math.sqrt(m * (E/N) * (1 - E/N) * (N - m) / (N - 1)) || 1;
+  const lo = Math.max(jmin, Math.floor(mu - 4 * sd));
+  const hi = Math.min(jmax, Math.ceil(mu + 4 * sd));
+  const ks = [], pks = [];
+  for (let k = lo; k <= hi; k++) { ks.push(k); pks.push(hypergeomPMF(k, N, E, m)); }
+
+  if (charts.dist) charts.dist.destroy();
+  charts.dist = new Chart(document.getElementById('chDistK'), {
+    type: 'bar',
+    data: { labels: ks, datasets: [{
+      label: 'P(K = k)',
+      data: pks,
+      backgroundColor: ks.map(k => k < P ? 'rgba(255,107,107,0.75)' : 'rgba(74,125,181,0.8)'),
+      borderColor: ks.map(k => k < P ? '#ff6b6b' : '#6a9dd5'),
+      borderWidth: 1
+    }]},
+    options: { ...chartOpts,
+      plugins: { ...chartOpts.plugins, legend: { display: false } },
+      scales: { ...chartOpts.scales,
+        x: { ...chartOpts.scales.x, title: { display: true, text: 'k (eligible among shortlist)', color: '#b0c4de' } },
+        y: { ...chartOpts.scales.y, title: { display: true, text: 'Probability', color: '#b0c4de' } }
+      }
+    }
+  });
+}
+
+function drawCompare(N, E, m, P, alpha, wN, wE) {
+  const wMax = Math.min(N - m, Math.max(60, (wE || 50) + 20));
+  const ws = [], naive = [], exact = [];
+  for (let w = 0; w <= wMax; w++) {
+    ws.push(w);
+    naive.push(naiveRisk(w, N, E, m, P));
+    exact.push(exactRisk(w, N, E, m, P));
+  }
+  if (charts.compare) charts.compare.destroy();
+  charts.compare = new Chart(document.getElementById('chCompare'), {
+    type: 'line',
+    data: { labels: ws, datasets: [
+      { label: 'Exact P(R_w > 0)', data: exact, borderColor: '#4dabf7',
+        backgroundColor: 'rgba(77,171,247,0.10)', borderWidth: 2.5, pointRadius: 0, tension: 0.15, fill: true },
+      { label: 'Naive P(Δ > w)', data: naive, borderColor: '#ff6b6b',
+        borderWidth: 2, pointRadius: 0, tension: 0.15, borderDash: [6,4] },
+      { label: 'Target α', data: ws.map(() => alpha), borderColor: '#ffd700',
+        borderWidth: 1.5, pointRadius: 0, borderDash: [3,3] }
+    ]},
+    options: { ...chartOpts,
+      scales: { ...chartOpts.scales,
+        x: { ...chartOpts.scales.x, title: { display: true, text: 'Waitlist size w', color: '#b0c4de' } },
+        y: { ...chartOpts.scales.y, title: { display: true, text: 'Risk', color: '#b0c4de' }, min: 0 }
+      }
+    }
+  });
+}
+
+function drawSensitivity(N, m, P, Ecurrent) {
+  const Es = [], risks = [];
+  const step = Math.max(1, Math.round(N / 200));
+  for (let E = 0; E <= N; E += step) {
+    Es.push(E);
+    risks.push(deficitRisk(N, E, m, P));
+  }
+  if (charts.sens) charts.sens.destroy();
+  charts.sens = new Chart(document.getElementById('chSensitivity'), {
+    type: 'line',
+    data: { labels: Es, datasets: [
+      { label: 'P(K < P)', data: risks, borderColor: '#ff6b6b',
+        backgroundColor: 'rgba(255,107,107,0.10)', borderWidth: 2, pointRadius: 0, tension: 0.2, fill: true }
+    ]},
+    options: { ...chartOpts,
+      plugins: { ...chartOpts.plugins, legend: { display: false } },
+      scales: { ...chartOpts.scales,
+        x: { ...chartOpts.scales.x, title: { display: true, text: 'E (eligible in population)', color: '#b0c4de' },
+             ticks: { ...chartOpts.scales.x.ticks, maxTicksLimit: 12 } },
+        y: { ...chartOpts.scales.y, title: { display: true, text: 'P(K < P)', color: '#b0c4de' }, min: 0, max: 1 }
+      }
+    }
+  });
+}
+
+function drawWStar(N, E, m, P, alphaCur) {
+  const alphas = [], wNaives = [], wExacts = [];
+  for (let a = 0.005; a <= 0.20; a += 0.005) {
+    alphas.push(a);
+    wNaives.push(naiveW(a, N, E, m, P));
+    const we = exactW(a, N, E, m, P);
+    wExacts.push(we === null ? null : we);
+  }
+  if (charts.wstar) charts.wstar.destroy();
+  charts.wstar = new Chart(document.getElementById('chWStar'), {
+    type: 'line',
+    data: { labels: alphas.map(a => a.toFixed(3)), datasets: [
+      { label: 'Naive w', data: wNaives, borderColor: '#ff6b6b',
+        borderWidth: 2, pointRadius: 0, tension: 0.15, borderDash: [5,4] },
+      { label: 'Exact w*', data: wExacts, borderColor: '#ffd700',
+        borderWidth: 2.5, pointRadius: 0, tension: 0.15 }
+    ]},
+    options: { ...chartOpts,
+      scales: { ...chartOpts.scales,
+        x: { ...chartOpts.scales.x, title: { display: true, text: 'Target risk α', color: '#b0c4de' },
+             ticks: { ...chartOpts.scales.x.ticks, maxTicksLimit: 10 } },
+        y: { ...chartOpts.scales.y, title: { display: true, text: 'Waitlist size', color: '#b0c4de' }, min: 0 }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   TABLES
+   ============================================================ */
+function fillCompareTable(N, E, m, P) {
+  const alphas = [0.10, 0.05, 0.02, 0.01, 0.005];
+  const tbody = document.getElementById('tbCompare');
+  let html = '';
+  alphas.forEach(a => {
+    const wN = naiveW(a, N, E, m, P);
+    const wE = exactW(a, N, E, m, P);
+    const ratio = wE !== null && wN > 0 ? (wE / wN).toFixed(2) : '—';
+    const riskAtNaive = exactRisk(wN, N, E, m, P);
+    const isTarget = Math.abs(a - 0.01) < 1e-6;
+    const cls = isTarget ? 'highlight-target' : '';
+    const badge = isTarget ? ' <span class="badge badge-target">reference</span>' : '';
+    html += `<tr class="${cls}">
+      <td>${a.toFixed(3)}${badge}</td>
+      <td>${wN}</td>
+      <td><strong>${wE === null ? '—' : wE}</strong></td>
+      <td>${ratio}</td>
+      <td>${riskAtNaive.toFixed(4)}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+/* ============================================================
+   EXPORT
+   ============================================================ */
+function exportCSV() {
+  const c = current;
+  if (!c.N) { alert('Run a computation first.'); return; }
+  let csv = `# Waitlist sizing simulator with rank translation\n`;
+  csv += `# N=${c.N}, m=${c.m}, P=${c.P}, E=${c.E}, alpha=${c.alpha}\n`;
+  csv += `# E[K]=${c.muK.toFixed(4)}, sigma_K=${c.sigmaK.toFixed(4)}\n`;
+  csv += `# P(K<P)=${c.defRisk.toFixed(6)}, E[Delta]=${c.expDef.toFixed(4)}\n`;
+  csv += `# Naive w=${c.wN}, Exact w*=${c.wE === null ? 'infeasible' : c.wE}\n`;
+  csv += '\n# Simulated shortlist\n';
+  csv += 'rank,eligible,new_rank,gain,holes_above,var_translation\n';
+  (shortlist || []).forEach(cd => {
+    csv += `${cd.rank},${cd.eligible ? 1 : 0},${cd.eligible ? cd.newRank : ''},${cd.eligible ? cd.gain : ''},${cd.holesAbove},${cd.var.toFixed(6)}\n`;
+  });
+  csv += '\nalpha,naive_w,exact_w,ratio,risk_at_naive_w\n';
+  [0.10, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001].forEach(a => {
+    const wN = naiveW(a, c.N, c.E, c.m, c.P);
+    const wE = exactW(a, c.N, c.E, c.m, c.P);
+    const ratio = (wE !== null && wN > 0) ? (wE / wN).toFixed(4) : '';
+    const riskAtNaive = exactRisk(wN, c.N, c.E, c.m, c.P);
+    csv += `${a},${wN},${wE === null ? '' : wE},${ratio},${riskAtNaive.toFixed(6)}\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `waitlist_sim_N${c.N}_m${c.m}_P${c.P}_E${c.E}.csv`;
+  a.click();
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+window.onload = function() {
+  drawShortlist();
+};
+</script>
+
+</body>
+</html>
