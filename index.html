@@ -1,0 +1,2866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waitlist Sizing Simulator — companion to Hajji-Fakir (2025)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: #0b0e14; color: #e0e6ed;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    max-width: 1800px; margin: auto; padding-bottom: 40px;
+  }
+  body.rtl { direction: rtl; }
+  body.rtl .header-row,
+  body.rtl .stats-row,
+  body.rtl .stats-inline,
+  body.rtl .badge-group,
+  body.rtl .presets,
+  body.rtl .actions,
+  body.rtl .params-row,
+  body.rtl .diag-trio,
+  body.rtl .gauge-pair,
+  body.rtl .bottom-pair,
+  body.rtl .fric-top-pair,
+  body.rtl .fric-metrics-row,
+  body.rtl .compact-charts-grid,
+  body.rtl .tables-grid,
+  body.rtl .legend-grid { direction: rtl; }
+  body.rtl .shortlist-row,
+  body.rtl .gain-row { direction: ltr; }
+  body.rtl .vulgar-box { border-left: none; border-right: 4px solid #4dabf7; text-align: right; }
+  body.rtl .vulgar-box.warn { border-right-color: #f2a365; }
+  body.rtl .vulgar-box.crit { border-right-color: #ff2a2a; }
+  body.rtl .vulgar-box.ok   { border-right-color: #6fcf97; }
+  body.rtl .vulgar-box::before { left: auto; right: 10px; }
+  body.rtl .remedy-box li { padding: 4px 22px 4px 0; }
+  body.rtl .remedy-box li::before { left: auto; right: 4px; content: '←'; }
+  body.rtl .msg-list li { border-left: none; border-right: 3px solid; }
+  body.rtl .msg-list li.danger { border-right-color: #ff2a2a; }
+  body.rtl .msg-list li.warn   { border-right-color: #f2a365; }
+  body.rtl .msg-list li.info   { border-right-color: #4dabf7; }
+  body.rtl .msg-list li.ok     { border-right-color: #6fcf97; }
+  body.rtl .info-box { border-left: none; border-right: 4px solid #ffd700; text-align: right; }
+  body.rtl .friction-factor { border-left: none; border-right: 4px solid #4a7db5; }
+  body.rtl .friction-factor.low  { border-right-color: #6fcf97; }
+  body.rtl .friction-factor.mid  { border-right-color: #ffd700; }
+  body.rtl .friction-factor.high { border-right-color: #f2a365; }
+  body.rtl .friction-factor.crit { border-right-color: #ff2a2a; }
+  body.rtl .fric-metrics-row .fric-metric { border-left: none; border-right: 4px solid #4a7db5; }
+  body.rtl .fric-metrics-row .fric-metric.low  { border-right-color: #6fcf97; }
+  body.rtl .fric-metrics-row .fric-metric.mid  { border-right-color: #ffd700; }
+  body.rtl .fric-metrics-row .fric-metric.high { border-right-color: #f2a365; }
+  body.rtl .fric-metrics-row .fric-metric.crit { border-right-color: #ff2a2a; }
+  body.rtl .legend-item { border-left: none; border-right: 4px solid #4a7db5; text-align: right; }
+  body.rtl .legend-item.input { border-right-color: #6fcf97; }
+  body.rtl .legend-item.derived { border-right-color: #f2a365; }
+  body.rtl .legend-item.output { border-right-color: #ffd700; }
+  body.rtl .header-row h1 .sub { margin-left: 0; margin-right: 6px; }
+  body.rtl .stat-pill b { direction: ltr; }
+  body.rtl .gain-summary { border-left: none; border-right: 3px solid #4dabf7; text-align: right; }
+  body.rtl .gain-summary .gs-label { margin-right: 0; margin-left: 6px; }
+  body.rtl .spin-btn.minus { border-right: none; border-left: 1px solid #2a3a5a; }
+  body.rtl .spin-btn.plus { border-left: none; border-right: 1px solid #2a3a5a; }
+  body.rtl .tabs-right-group { margin-left: 0; margin-right: auto; }
+
+  @keyframes pulseAlarm { 0%,100%{box-shadow:0 0 0 0 rgba(255,42,42,0.7);} 50%{box-shadow:0 0 0 8px rgba(255,42,42,0),0 0 18px rgba(255,42,42,0.9);} }
+  @keyframes blinkRed { 0%,100%{background:#7a0a0a;border-color:#ff2a2a;color:#ffcccc;} 50%{background:#ff2a2a;border-color:#ffcccc;color:#fff;} }
+  @keyframes barShimmer { 0%{background-position:-200% 0;} 100%{background-position:200% 0;} }
+  @keyframes pillShake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+  @keyframes valueFlash { 0% { color: #ffd700; } 50% { color: #ffffff; text-shadow: 0 0 8px #ffd700; } 100% { color: #ffd700; } }
+  @keyframes langMenuIn { from { opacity: 0; transform: translateY(-6px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .alarm-pulse { animation: pulseAlarm 1.4s infinite; }
+  .alarm-blink { animation: blinkRed 1.0s infinite; }
+
+  .sticky-header {
+    position: sticky; top: 0; z-index: 200;
+    background: #0b0e14;
+    border-bottom: 1px solid #2a3a5a;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.55);
+    padding: 8px 16px 0 16px;
+  }
+  .sticky-header.alarm-mode { border-bottom-color: #ff2a2a; }
+
+  /* ============================================================
+     RANGÉE 1 : ONGLETS + LANG SELECT + BOUTON HIDE
+     ============================================================ */
+  .tabs {
+    display: flex; gap: 8px; padding: 6px 0 10px 0;
+    overflow-x: auto; flex-wrap: wrap;
+    background: linear-gradient(180deg, #0b0e14, rgba(20,27,38,0.6));
+    align-items: center;
+    border-bottom: 1px solid #1f2a3a;
+    position: relative;
+    z-index: 100;
+  }
+  .tabs-right-group { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .tab-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(180deg, #2a3448, #1a2030);
+    color: #9aaec9;
+    border: 1px solid #3a4a6a;
+    border-radius: 9px;
+    padding: 9px 15px;
+    font-size: 0.84rem; font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    font-family: inherit;
+    box-shadow: 0 3px 0 #05080d, inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 4px rgba(0,0,0,0.35);
+    position: relative;
+    user-select: none;
+    letter-spacing: 0.2px;
+  }
+  .tab-btn:hover {
+    background: linear-gradient(180deg, #3a4a6a, #2a3448);
+    border-color: #5a7aaa;
+    color: #e0e6ed;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 #05080d, inset 0 1px 0 rgba(255,255,255,0.1), 0 3px 8px rgba(0,0,0,0.4);
+  }
+  .tab-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #05080d, inset 0 2px 6px rgba(0,0,0,0.5); }
+  .tab-btn.active {
+    background: linear-gradient(180deg, #4a7db5, #2a4a7a);
+    border-color: #8ab4f8;
+    color: #ffffff;
+    box-shadow: 0 3px 0 #05080d, inset 0 1px 0 rgba(255,255,255,0.25), 0 0 14px rgba(138,180,248,0.45);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .tab-btn.diag { color: #ff8b8b; border-color: #5a2a2a; }
+  .tab-btn.diag:hover { color: #ffb0b0; border-color: #8a3a3a; background: linear-gradient(180deg, #3a1f1f, #2a1414); }
+  .tab-btn.diag.active {
+    background: linear-gradient(180deg, #a83a3a, #7a1a1a);
+    border-color: #ff6b6b; color: #ffffff;
+    box-shadow: 0 3px 0 #05080d, inset 0 1px 0 rgba(255,255,255,0.25), 0 0 14px rgba(255,107,107,0.5);
+  }
+  .tab-btn.fric-tab { color: #f2a365; border-color: #5a3a1a; }
+  .tab-btn.fric-tab:hover { color: #ffd0a0; border-color: #8a6a2a; background: linear-gradient(180deg, #3a2a14, #2a1a0a); }
+  .tab-btn.fric-tab.active {
+    background: linear-gradient(180deg, #b07a2a, #7a5a1a);
+    border-color: #f2a365; color: #ffffff;
+    box-shadow: 0 3px 0 #05080d, inset 0 1px 0 rgba(255,255,255,0.25), 0 0 14px rgba(242,163,101,0.5);
+  }
+  .tab-btn.toggle-bar {
+    background: linear-gradient(180deg, #5a4a1a, #3a2a0a);
+    border-color: #8a6a2a; color: #ffd700;
+  }
+  .tab-btn.toggle-bar:hover { background: linear-gradient(180deg, #7a5a2a, #4a3a1a); border-color: #b08a3a; color: #ffe060; }
+
+  /* ============================================================
+     LANG SELECT
+     ============================================================ */
+  .lang-select-wrap { position: relative; z-index: 200; }
+  .lang-select-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: linear-gradient(180deg, #2a3448, #1a2030);
+    border: 1px solid #3a4a6a;
+    border-radius: 9px;
+    padding: 9px 12px;
+    font-family: inherit;
+    font-size: 0.82rem; font-weight: 700;
+    color: #e0e6ed;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #05080d, inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 4px rgba(0,0,0,0.35);
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  .lang-select-btn:hover { background: linear-gradient(180deg, #3a4a6a, #2a3448); border-color: #5a7aaa; color: #e0e6ed; transform: translateY(-1px); }
+  .lang-flag { font-size: 1rem; line-height: 1; }
+  .lang-code { font-family: 'Courier New', monospace; font-weight: 900; font-size: 0.78rem; letter-spacing: 0.5px; color: #8ab4f8; }
+  .lang-caret { color: #8ab4f8; font-size: 0.65rem; margin-left: 2px; transition: transform 0.2s; }
+  .lang-select-btn.open .lang-caret { transform: rotate(180deg); }
+
+  .lang-menu {
+    position: fixed;
+    top: 0; right: 0; left: auto;
+    z-index: 2147483647;
+    width: 260px;
+    background: linear-gradient(180deg, #1a2030, #141b26);
+    border: 1px solid #3a4a6a;
+    border-radius: 10px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.75), 0 0 0 1px rgba(138,180,248,0.1);
+    padding: 8px;
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    animation: langMenuIn 0.16s ease;
+    pointer-events: auto;
+    isolation: isolate;
+  }
+  .lang-menu.open { display: grid; }
+  .lang-item {
+    display: flex; align-items: center; gap: 7px;
+    background: transparent; border: 1px solid transparent;
+    padding: 7px 9px; border-radius: 6px;
+    color: #cfe2f3; font-size: 0.78rem; font-family: inherit;
+    font-weight: 600; cursor: pointer; text-align: left;
+    transition: background 0.12s, border-color 0.12s;
+    white-space: nowrap; min-width: 0;
+  }
+  body.rtl .lang-item { text-align: right; }
+  .lang-item:hover { background: #2a3448; border-color: #4a5a7a; }
+  .lang-item.active {
+    background: linear-gradient(180deg, #2a4a7a, #1a3a5a);
+    border-color: #8ab4f8; color: #ffffff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 0 8px rgba(138,180,248,0.35);
+  }
+  .lang-item .li-flag { font-size: 0.95rem; line-height: 1; }
+  .lang-item .li-name { flex: 1; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .lang-item .li-code { font-family: 'Courier New', monospace; font-size: 0.66rem; color: #7a8a9a; font-weight: 800; letter-spacing: 0.5px; }
+  .lang-item.active .li-code { color: #ffd700; }
+
+  /* ============================================================
+     PARAMS
+     ============================================================ */
+  .params-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 10px 0; flex-wrap: wrap;
+    border-bottom: 1px solid #1f2a3a;
+    position: relative; z-index: 50;
+  }
+  .params-row.params-row-always { background: rgba(20,27,38,0.35); }
+
+  .param-pill {
+    display: flex; flex-direction: column; align-items: stretch; gap: 3px;
+    background: linear-gradient(180deg, #1f2a3a 0%, #161e2b 100%);
+    border: 1px solid #3a4a6a;
+    border-radius: 10px;
+    padding: 5px 6px 4px 6px;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04);
+    min-width: 0;
+  }
+  .param-pill:hover { border-color: #5a7aaa; box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08); transform: translateY(-1px); }
+  .param-pill:focus-within { border-color: #8ab4f8; box-shadow: 0 0 0 3px rgba(138,180,248,0.18), 0 4px 12px rgba(0,0,0,0.4); }
+  .param-pill.violation { border-color: #ff6b6b; box-shadow: 0 0 12px rgba(255,107,107,0.55); animation: pillShake 0.4s; }
+  .param-pill.omega-active { border-color: #b06ddb; box-shadow: 0 0 8px rgba(176,109,219,0.35); }
+  .param-pill label {
+    display: flex; gap: 5px; align-items: baseline; justify-content: center;
+    line-height: 1; cursor: help; padding: 0; border: none; min-width: 0;
+    margin-top: 1px; white-space: nowrap;
+  }
+  .param-pill .sym { color: #8ab4f8; font-weight: 800; font-family: 'Courier New', monospace; font-size: 0.68rem; letter-spacing: 0.5px; text-shadow: 0 0 6px rgba(138,180,248,0.35); }
+  .param-pill .name { color: #cfe2f3; font-weight: 600; font-size: 0.62rem; letter-spacing: 0.1px; opacity: 0.88; }
+
+  .param-control {
+    display: inline-flex; align-items: stretch;
+    background: #0a0e15; border-radius: 7px; overflow: hidden;
+    border: 1px solid #2a3a5a;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .param-pill:focus-within .param-control { border-color: #8ab4f8; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(138,180,248,0.35); }
+  .param-control input[type="number"] {
+    background: transparent; border: none; color: #ffd700;
+    padding: 4px 6px; width: 72px;
+    font-size: 0.88rem; font-weight: 700; text-align: center;
+    font-family: 'Courier New', monospace;
+    height: 32px;
+    -moz-appearance: textfield;
+  }
+  .param-control input[type="number"]:focus { outline: none; }
+  .param-control input[type="number"]::-webkit-inner-spin-button,
+  .param-control input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .spin-btn {
+    width: 28px;
+    background: linear-gradient(180deg, #2a3448 0%, #1a2030 100%);
+    color: #8ab4f8;
+    border: none;
+    font-size: 1.05rem; font-weight: 900;
+    cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background 0.12s, color 0.12s, transform 0.08s;
+    user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+    line-height: 1; padding: 0; position: relative;
+  }
+  .spin-btn:hover { background: linear-gradient(180deg, #3a4a6a 0%, #2a3448 100%); color: #cfe2f3; }
+  .spin-btn:active { background: linear-gradient(180deg, #4a7db5 0%, #2a4a7a 100%); color: #ffffff; transform: scale(0.92); }
+  .spin-btn.minus { border-right: 1px solid #2a3a5a; }
+  .spin-btn.plus  { border-left: 1px solid #2a3a5a; }
+  .param-control.spin-flash input[type="number"] { animation: valueFlash 0.35s ease; }
+
+  /* ============================================================
+     HEADER
+     ============================================================ */
+  .header-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; flex-wrap: wrap; border-bottom: 1px solid #1f2a3a; }
+  .header-row h1 { font-size: 1rem; color: #8ab4f8; font-weight: 700; white-space: nowrap; }
+  .header-row h1 .sub { color: #7a8a9a; font-weight: 400; font-size: 0.78rem; margin-left: 6px; }
+  .presets, .actions { display: flex; gap: 5px; flex-wrap: wrap; }
+  .header-row button {
+    background: #232c3d; color: #e0e6ed; border: 1px solid #3a4a6a;
+    padding: 5px 10px; border-radius: 6px; font-size: 0.76rem;
+    font-weight: 600; cursor: pointer; transition: all 0.15s;
+    white-space: nowrap; font-family: inherit;
+  }
+  .header-row button:hover { background: #2f3c52; border-color: #5a7aaa; }
+  .header-row button.primary { background: #1a5a3a; border-color: #2a7a4a; }
+  .header-row button.primary:hover { background: #2a7a4a; }
+  .header-row button.gold { background: #4a3a1a; border-color: #8a6a2a; }
+  .header-row button.gold:hover { background: #6a5a2a; }
+  .header-row button.preset { background: #3a2a5a; border-color: #5a3a8a; }
+  .header-row button.preset:hover { background: #5a3a8a; }
+  .header-row button.preset.fric { background: #5a3a1a; border-color: #8a6a2a; }
+  .header-row button.preset.fric:hover { background: #8a6a2a; }
+  .header-row button.preset.nchg { background: #4a2a5a; border-color: #8a3a8a; }
+  .header-row button.preset.nchg:hover { background: #6a3a8a; }
+  .header-row .spacer { flex: 1; }
+
+  /* ============================================================
+     STATS
+     ============================================================ */
+  .stats-row { display: flex; align-items: center; flex-wrap: wrap; padding: 6px 0 8px 0; }
+  .stats-inline { display: flex; gap: 5px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+  .stat-pill {
+    display: inline-flex; align-items: baseline; gap: 4px;
+    background: #161e2b; border: 1px solid #2a3a5a;
+    border-radius: 6px; padding: 3px 8px;
+    font-size: 0.68rem; color: #9aaec9; white-space: nowrap;
+    position: relative;
+  }
+  .stat-pill b { font-size: 0.82rem; font-weight: 800; font-family: 'Courier New', monospace; }
+  .stat-pill.green b { color: #6fcf97; }
+  .stat-pill.gold b { color: #ffd700; }
+  .stat-pill.pink b { color: #f28b8b; }
+  .stat-pill.red b { color: #ff6b6b; }
+  .stat-pill.blue b { color: #8ab4f8; }
+  .stat-pill.orange b { color: #f2a365; }
+  .stat-pill.purple b { color: #b06ddb; }
+  .stat-pill .ref { font-size: 0.55rem; color: #6a7a8a; font-family: 'Courier New', monospace; padding-left: 3px; border-left: 1px solid #2a3a5a; margin-left: 1px; }
+  body.rtl .stat-pill .ref { padding-left: 0; padding-right: 3px; border-left: none; border-right: 1px solid #2a3a5a; margin-left: 0; margin-right: 1px; }
+
+  .badge-group { display: inline-flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+  .feas-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 8px;
+    font-size: 0.78rem; font-weight: 800;
+    border: 2px solid;
+  }
+  .feas-badge .icon { font-size: 1rem; line-height: 1; }
+  .feas-badge .txt { font-family: 'Courier New', monospace; }
+  .feas-badge .lvl { font-size: 0.62rem; padding: 1px 6px; border-radius: 10px; background: rgba(255,255,255,0.15); font-weight: 700; }
+  .feas-badge .ref { font-size: 0.55rem; color: #9aaec9; padding-left: 5px; margin-left: 2px; border-left: 1px solid rgba(255,255,255,0.2); }
+  .feas-badge.ok    { background: #0f3a1f; border-color: #2a7a4a; color: #b0e0b0; }
+  .feas-badge.tight { background: #4a3a1a; border-color: #8a6a2a; color: #ffd700; }
+  .feas-badge.warn  { background: #5a1a0a; border-color: #ff6b6b; color: #ffcccc; }
+  .feas-badge.no    { background: #7a0a0a; border-color: #ff2a2a; color: #ffcccc; }
+
+  .fric-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 12px; border-radius: 8px;
+    font-size: 0.78rem; font-weight: 800;
+    border: 2px solid;
+  }
+  .fric-badge .fb-icon { font-size: 1rem; line-height: 1; }
+  .fric-badge .fb-label { font-family: 'Courier New', monospace; }
+  .fric-badge .fb-level { font-size: 0.62rem; padding: 1px 7px; border-radius: 10px; background: rgba(255,255,255,0.15); font-weight: 700; }
+  .fric-badge .fb-score { font-family: 'Courier New', monospace; font-size: 0.88rem; font-weight: 900; padding-left: 7px; margin-left: 2px; border-left: 1px solid rgba(255,255,255,0.18); }
+  body.rtl .fric-badge .fb-score { padding-left: 0; padding-right: 7px; margin-left: 0; margin-right: 2px; border-left: none; border-right: 1px solid rgba(255,255,255,0.18); }
+  .fric-badge.low  { background: #0f2a1f; border-color: #2a6a4a; color: #a0d0b0; }
+  .fric-badge.low .fb-score { color: #6fcf97; }
+  .fric-badge.mid  { background: #4a3a1a; border-color: #8a6a2a; color: #ffd700; }
+  .fric-badge.mid .fb-score { color: #ffd700; }
+  .fric-badge.high { background: #5a3a1a; border-color: #f2a365; color: #ffd0a0; }
+  .fric-badge.high .fb-score { color: #f2a365; }
+  .fric-badge.crit { background: #5a2a0a; border-color: #ff8a3a; color: #ffb080; }
+  .fric-badge.crit .fb-score { color: #ff8a3a; }
+
+  main { padding: 12px 16px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .card { background: #141b26; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+  .card h3 { color: #b0c4de; margin: 0 0 10px 0; border-bottom: 1px solid #2a3a5a; padding-bottom: 6px; font-size: 0.92rem; font-weight: 600; }
+
+  /* ============================================================
+     PAPER REFERENCE BADGES
+     ============================================================ */
+  .paper-ref {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #ffd700;
+    background: rgba(255,215,0,0.10);
+    border: 1px solid rgba(255,215,0,0.4);
+    border-radius: 5px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+    text-transform: none;
+  }
+  body.rtl .paper-ref { margin-left: 0; margin-right: 6px; }
+
+  .paper-note {
+    background: linear-gradient(135deg, #1a1428 0%, #100a18 100%);
+    border-left: 4px solid #b06ddb;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 0.78rem;
+    color: #d0c0e0;
+    line-height: 1.55;
+  }
+  body.rtl .paper-note { border-left: none; border-right: 4px solid #b06ddb; text-align: right; }
+  .paper-note .pn-title {
+    color: #b06ddb;
+    font-weight: 800;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    display: block;
+  }
+  .paper-note code {
+    font-family: 'Courier New', monospace;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #ffd700;
+    font-size: 0.78rem;
+  }
+
+  .pedago-banner {
+    background: linear-gradient(135deg, #0a1e2a 0%, #05141c 100%);
+    border-left: 4px solid #4dabf7;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 0.8rem;
+    color: #b0d8f0;
+    line-height: 1.55;
+  }
+  body.rtl .pedago-banner { border-left: none; border-right: 4px solid #4dabf7; }
+  .pedago-banner.warn { border-left-color: #ffd700; color: #f0d890; }
+  body.rtl .pedago-banner.warn { border-right-color: #ffd700; }
+  .pedago-banner.crit { border-left-color: #ff2a2a; color: #ffb0b0; }
+  body.rtl .pedago-banner.crit { border-right-color: #ff2a2a; }
+  .pedago-banner .pb-icon { font-size: 1rem; margin-right: 6px; }
+  body.rtl .pedago-banner .pb-icon { margin-right: 0; margin-left: 6px; }
+  .pedago-banner code { font-family: 'Courier New', monospace; background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 3px; color: #ffd700; }
+
+  .gain-row {
+    display: flex; flex-wrap: nowrap; align-items: center;
+    gap: 2px; overflow-x: auto; padding: 4px 0 6px 0;
+    border-bottom: 1px solid #1a2030;
+  }
+  .gain-cell {
+    width: 20px; height: 26px;
+    border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 900;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.2px;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.15s;
+    background: rgba(111,207,151,0.15);
+    color: #b0e0b0;
+    border: 1px solid rgba(111,207,151,0.35);
+  }
+  .gain-cell:hover { transform: scale(1.18); z-index: 5; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+  .gain-cell.mid-gain { background: rgba(255,215,0,0.20); color: #ffd700; border-color: rgba(255,215,0,0.5); text-shadow: 0 0 5px rgba(255,215,0,0.35); }
+  .gain-cell.high-gain { background: rgba(242,163,101,0.30); color: #ffb070; border-color: rgba(242,163,101,0.65); font-weight: 900; text-shadow: 0 0 6px rgba(242,163,101,0.55); box-shadow: 0 0 6px rgba(242,163,101,0.35); }
+  .gain-cell.zero { background: rgba(122,138,154,0.10); color: #7a8a9a; border-color: rgba(122,138,154,0.28); }
+
+  .gain-summary {
+    margin-top: 8px; padding: 8px 12px;
+    background: rgba(77,171,247,0.08);
+    border-left: 3px solid #4dabf7;
+    border-radius: 6px;
+    font-size: 0.78rem; color: #cfe2f3; line-height: 1.5;
+  }
+  body.rtl .gain-summary { border-left: none; border-right: 3px solid #4dabf7; }
+  .gain-summary b { color: #ffd700; font-family: 'Courier New', monospace; font-size: 0.85rem; font-weight: 900; }
+  .gain-summary .gs-label { color: #7a8a9a; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 6px; }
+
+  .vulgar-box {
+    background: linear-gradient(135deg, #12283a 0%, #0d1a26 100%);
+    border-left: 4px solid #4dabf7; border-radius: 8px;
+    padding: 12px 16px; margin-top: 10px;
+    font-size: 0.82rem; line-height: 1.6; color: #cfe2f3;
+    position: relative; transition: all 0.3s;
+  }
+  body.rtl .vulgar-box { border-left: none; border-right: 4px solid #4dabf7; text-align: right; }
+  .vulgar-box::before { content: '🗣️'; position: absolute; top: -10px; left: 10px; background: #0d1a26; padding: 0 6px; font-size: 1rem; }
+  body.rtl .vulgar-box::before { left: auto; right: 10px; }
+  .vulgar-box .vulgar-title { color: #4dabf7; font-weight: 800; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; }
+  .vulgar-box .vulgar-num { font-family: 'Courier New', monospace; background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 3px; color: #ffd700; }
+  .vulgar-box .vulgar-danger { color: #ff6b6b; font-weight: 700; }
+  .vulgar-box.warn { border-left-color: #f2a365; background: linear-gradient(135deg, #2a1a0a, #1a1005); }
+  body.rtl .vulgar-box.warn { border-right-color: #f2a365; border-left: none; }
+  .vulgar-box.warn::before { background: #1a1005; }
+  .vulgar-box.warn .vulgar-title { color: #f2a365; }
+  .vulgar-box.crit { border-left-color: #ff2a2a; background: linear-gradient(135deg, #2a0a0a, #1a0505); }
+  body.rtl .vulgar-box.crit { border-right-color: #ff2a2a; border-left: none; }
+  .vulgar-box.crit::before { background: #1a0505; }
+  .vulgar-box.crit .vulgar-title { color: #ff8b8b; }
+  .vulgar-box.ok { border-left-color: #6fcf97; background: linear-gradient(135deg, #0f2a1f, #0a1a14); }
+  body.rtl .vulgar-box.ok { border-right-color: #6fcf97; border-left: none; }
+  .vulgar-box.ok::before { background: #0a1a14; }
+  .vulgar-box.ok .vulgar-title { color: #6fcf97; }
+
+  .compact-charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .chart-card-compact { background: #141b26; border-radius: 10px; padding: 10px 12px; }
+  .chart-card-compact h3 { color: #b0c4de; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #2a3a5a; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .chart-card-compact .foot { font-size: 0.66rem; color: #7a8a9a; text-align: center; margin-top: 4px; }
+  .chart-container-compact { position: relative; height: calc((100vh - 300px) / 2); min-height: 160px; max-height: 240px; transition: height 0.25s, max-height 0.25s; }
+
+  .diag-trio { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 10px; margin-bottom: 12px; align-items: stretch; }
+  .diag-trio .mini-verdict { padding: 10px 14px; border-radius: 10px; border: 3px solid; display: flex; align-items: center; gap: 10px; }
+  .diag-trio .mini-verdict .mv-icon { font-size: 1.8rem; line-height: 1; }
+  .diag-trio .mini-verdict .mv-body { flex: 1; }
+  .diag-trio .mini-verdict .mv-title { font-size: 0.85rem; font-weight: 800; }
+  .diag-trio .mini-verdict .mv-sub { font-size: 0.68rem; opacity: 0.85; margin-top: 2px; line-height: 1.35; }
+  .diag-trio .diag-verdict { padding: 10px 14px; border-radius: 10px; border: 3px solid; display: flex; align-items: center; gap: 12px; margin-bottom: 0; }
+  .diag-trio .diag-verdict .big-icon { font-size: 2rem; line-height: 1; }
+  .diag-trio .diag-verdict .verdict-text { flex: 1; min-width: 0; }
+  .diag-trio .diag-verdict .verdict-title { font-size: 0.95rem; font-weight: 800; margin-bottom: 2px; }
+  .diag-trio .diag-verdict .verdict-sub { font-size: 0.68rem; opacity: 0.9; line-height: 1.35; }
+  .diag-trio .diag-verdict .score-box { text-align: center; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,0.3); min-width: 68px; flex-shrink: 0; }
+  .diag-trio .diag-verdict .score-box .num { font-size: 1.4rem; font-weight: 900; font-family: 'Courier New', monospace; line-height: 1; }
+  .diag-trio .diag-verdict .score-box .lbl { font-size: 0.56rem; text-transform: uppercase; opacity: 0.8; margin-top: 2px; }
+
+  .gauge-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .gauge-pair .friction-gauge-card { padding: 12px 16px; margin-bottom: 0; }
+  .gauge-pair .friction-gauge-num { font-size: 1.8rem; }
+  .gauge-pair .friction-gauge-header { margin-bottom: 8px; }
+  .gauge-pair .friction-bar { height: 30px; }
+  .gauge-pair .friction-bar-outer { min-width: 220px; }
+  .gauge-pair .friction-factors-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
+  .gauge-pair .friction-factor { padding: 6px 8px; }
+  .gauge-pair .friction-factor .ff-value { font-size: 0.88rem; }
+  .gauge-pair .friction-factor .ff-label { font-size: 0.6rem; }
+  .gauge-pair .friction-factor .ff-desc { font-size: 0.62rem; }
+
+  .bottom-pair { display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; }
+  .bottom-pair .card { padding: 10px 12px; margin-bottom: 0; max-height: calc(100vh - 480px); min-height: 140px; overflow-y: auto; }
+  .bottom-pair .card h3 { font-size: 0.82rem; margin-bottom: 6px; padding-bottom: 4px; position: sticky; top: 0; background: #141b26; z-index: 2; }
+  .bottom-pair .msg-list { margin: 0; }
+  .bottom-pair .msg-list li { padding: 6px 10px; font-size: 0.76rem; margin-bottom: 4px; }
+  .bottom-pair .remedy-box { padding: 0; background: none; border: none; margin: 0; }
+  .bottom-pair .remedy-box li { font-size: 0.76rem; padding: 3px 0 3px 20px; }
+
+  .fric-top-pair { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .fric-top-pair .friction-gauge-card { padding: 14px 18px; margin-bottom: 0; }
+  .fric-top-pair .diag-verdict { padding: 14px 18px; margin-bottom: 0; display: flex; align-items: center; gap: 14px; }
+  .fric-top-pair .diag-verdict .big-icon { font-size: 2.4rem; }
+  .fric-top-pair .diag-verdict .verdict-title { font-size: 1.1rem; }
+  .fric-top-pair .diag-verdict .verdict-sub { font-size: 0.76rem; }
+  .fric-top-pair .diag-verdict .score-box { padding: 6px 12px; min-width: 90px; }
+  .fric-top-pair .diag-verdict .score-box .num { font-size: 1.8rem; }
+
+  .fric-metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+  .fric-metrics-row .fric-metric { background: #1a2030; border-radius: 8px; padding: 10px 12px; border-left: 4px solid #4a7db5; }
+  .fric-metrics-row .fric-metric .fm-label { font-size: 0.66rem; margin-bottom: 4px; color: #9aaec9; text-transform: uppercase; }
+  .fric-metrics-row .fric-metric .fm-value { font-size: 1.15rem; font-weight: 900; font-family: 'Courier New', monospace; line-height: 1; }
+  .fric-metrics-row .fric-metric .fm-desc { font-size: 0.66rem; margin-top: 3px; color: #7a8a9a; }
+  .fric-metrics-row .fric-metric .fm-bar { height: 5px; margin-top: 6px; background: #0d1219; border-radius: 3px; overflow: hidden; }
+  .fric-metrics-row .fric-metric .fm-bar-fill { height: 100%; border-radius: 3px; }
+  .fric-metrics-row .fric-metric.low  { border-left-color: #6fcf97; } .fric-metrics-row .fric-metric.low  .fm-value { color: #6fcf97; }
+  .fric-metrics-row .fric-metric.mid  { border-left-color: #ffd700; } .fric-metrics-row .fric-metric.mid  .fm-value { color: #ffd700; }
+  .fric-metrics-row .fric-metric.high { border-left-color: #f2a365; } .fric-metrics-row .fric-metric.high .fm-value { color: #f2a365; }
+  .fric-metrics-row .fric-metric.crit { border-left-color: #ff2a2a; } .fric-metrics-row .fric-metric.crit .fm-value { color: #ff2a2a; }
+
+  .friction-gauge-card {
+    background: linear-gradient(135deg, #0d141f, #131b28);
+    border: 2px solid #2a3a5a; border-radius: 14px;
+    padding: 20px 22px; margin-bottom: 16px;
+  }
+  .friction-gauge-card.low  { border-color: #2a6a4a; }
+  .friction-gauge-card.mid  { border-color: #8a6a2a; }
+  .friction-gauge-card.high { border-color: #f2a365; }
+  .friction-gauge-card.crit { border-color: #ff2a2a; }
+  .friction-gauge-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+  .friction-gauge-title { font-size: 0.9rem; font-weight: 800; color: #b0c4de; text-transform: uppercase; letter-spacing: 1.2px; display: flex; align-items: center; gap: 8px; }
+  .friction-gauge-readout { display: flex; align-items: baseline; gap: 8px; font-family: 'Courier New', monospace; }
+  .friction-gauge-num { font-size: 2.6rem; font-weight: 900; line-height: 1; }
+  .friction-gauge-unit { font-size: 0.85rem; color: #7a8a9a; font-weight: 700; }
+  .friction-gauge-zone { font-size: 0.72rem; font-weight: 800; padding: 3px 12px; border-radius: 12px; text-transform: uppercase; margin-left: 8px; }
+  body.rtl .friction-gauge-zone { margin-left: 0; margin-right: 8px; }
+  .friction-bar-outer { min-width: 380px; max-width: 100%; margin: 0 auto; }
+  .friction-bar-wrap { position: relative; padding: 6px 0 34px 0; }
+  .friction-bar { position: relative; height: 46px; background: #05080d; border: 2px solid #1f2a3a; border-radius: 8px; overflow: hidden; }
+  .friction-gauge-card.high .friction-bar { border-color: #f2a365; }
+  .friction-gauge-card.crit .friction-bar { border-color: #ff2a2a; }
+  .friction-ticks { position: absolute; inset: 0; display: flex; justify-content: space-between; pointer-events: none; z-index: 1; }
+  .friction-ticks .tick { width: 1px; height: 100%; background: rgba(255,255,255,0.06); }
+  .friction-ticks .tick.major { background: rgba(255,255,255,0.22); }
+  .friction-fill { position: absolute; top: 0; left: 0; bottom: 0; border-radius: 6px; transition: width 0.65s, background 0.4s; overflow: hidden; z-index: 2; }
+  body.rtl .friction-fill { left: auto; right: 0; }
+  .friction-fill::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%); background-size: 200% 100%; animation: barShimmer 2.6s infinite linear; }
+  .friction-segments { position: absolute; inset: 0; display: flex; gap: 2px; padding: 4px; pointer-events: none; z-index: 3; }
+  .friction-segments .seg { flex: 1; background: transparent; border-radius: 2px; transition: background 0.3s; }
+  .friction-segments .seg.lit { background: rgba(255,255,255,0.09); }
+  .friction-segments .seg.active { background: rgba(255,255,255,0.28); }
+  .friction-segments .seg.high.active { background: rgba(255,255,255,0.42); }
+  .friction-segments .seg.crit.active { background: rgba(255,255,255,0.6); }
+  .friction-peak { position: absolute; top: -3px; bottom: -3px; width: 4px; border-radius: 2px; z-index: 5; transition: left 0.65s; }
+  .friction-peak::after { content: ''; position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid currentColor; }
+  .friction-zone-labels { position: absolute; bottom: 0; left: 0; right: 0; display: flex; font-size: 0.66rem; color: #7a8a9a; font-weight: 800; text-transform: uppercase; pointer-events: none; }
+  .friction-zone-labels .zone { padding: 5px 0; text-align: center; border-top: 3px solid transparent; flex: 25; }
+  .friction-zone-labels .zone.current { color: #ffd700; border-top-color: #ffd700; }
+  .friction-zone-labels .zone[data-zone="high"].current { color: #f2a365; border-top-color: #f2a365; }
+  .friction-zone-labels .zone[data-zone="crit"].current { color: #ff2a2a; border-top-color: #ff2a2a; }
+  .friction-state-msg { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; border-left: 4px solid; line-height: 1.5; }
+  body.rtl .friction-state-msg { border-left: none; border-right: 4px solid; }
+  .friction-state-msg.low  { background: rgba(111,207,151,0.08); border-color: #6fcf97; color: #b0e0b0; }
+  .friction-state-msg.mid  { background: rgba(255,215,0,0.08);  border-color: #ffd700; color: #ffd700; }
+  .friction-state-msg.high { background: rgba(242,163,101,0.10); border-color: #f2a365; color: #ffd0a0; }
+  .friction-state-msg.crit { background: rgba(255,42,42,0.12); border-color: #ff2a2a; color: #ffb0b0; }
+  .friction-factors-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 14px; }
+  .friction-factor { background: #1a2030; border-radius: 8px; padding: 10px 12px; border-left: 4px solid #4a7db5; }
+  .friction-factor .ff-label { font-size: 0.68rem; color: #9aaec9; text-transform: uppercase; margin-bottom: 4px; }
+  .friction-factor .ff-value { font-size: 1.1rem; font-weight: 800; font-family: 'Courier New', monospace; line-height: 1.1; }
+  .friction-factor .ff-desc { font-size: 0.7rem; color: #7a8a9a; margin-top: 3px; line-height: 1.4; }
+  .friction-factor .ff-bar { height: 5px; background: #0d1219; border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .friction-factor .ff-bar-fill { height: 100%; border-radius: 3px; }
+  .friction-factor.low  { border-left-color: #6fcf97; } .friction-factor.low  .ff-value { color: #6fcf97; }
+  .friction-factor.mid  { border-left-color: #ffd700; } .friction-factor.mid  .ff-value { color: #ffd700; }
+  .friction-factor.high { border-left-color: #f2a365; } .friction-factor.high .ff-value { color: #f2a365; }
+  .friction-factor.crit { border-left-color: #ff2a2a; } .friction-factor.crit .ff-value { color: #ff2a2a; }
+
+  .diag-verdict { display: flex; align-items: center; gap: 16px; padding: 18px 22px; border-radius: 12px; border: 3px solid; margin-bottom: 16px; }
+  .diag-verdict .big-icon { font-size: 3.2rem; line-height: 1; }
+  .diag-verdict .verdict-text { flex: 1; }
+  .diag-verdict .verdict-title { font-size: 1.35rem; font-weight: 800; margin-bottom: 4px; }
+  .diag-verdict .verdict-sub { font-size: 0.88rem; opacity: 0.9; line-height: 1.5; }
+  .diag-verdict .score-box { text-align: center; padding: 8px 16px; border-radius: 10px; background: rgba(0,0,0,0.3); min-width: 110px; }
+  .diag-verdict .score-box .num { font-size: 2.1rem; font-weight: 900; font-family: 'Courier New', monospace; line-height: 1; }
+  .diag-verdict .score-box .lbl { font-size: 0.65rem; text-transform: uppercase; opacity: 0.8; margin-top: 2px; }
+  .diag-verdict.ok    { background: linear-gradient(135deg, #0f3a1f, #0a2414); border-color: #2a7a4a; color: #b0e0b0; }
+  .diag-verdict.tight { background: linear-gradient(135deg, #4a3a1a, #2a200a); border-color: #8a6a2a; color: #ffd700; }
+  .diag-verdict.warn  { background: linear-gradient(135deg, #5a1a0a, #3a0a00); border-color: #ff6b6b; color: #ffcccc; }
+  .diag-verdict.no    { background: linear-gradient(135deg, #7a0a0a, #4a0000); border-color: #ff2a2a; color: #ffcccc; }
+  .diag-verdict.low   { background: linear-gradient(135deg, #0f2a1f, #0a1a14); border-color: #2a6a4a; color: #a0d0b0; }
+
+  .mini-verdict { border-radius: 12px; }
+  .mini-verdict.ok    { background: linear-gradient(135deg, #0f3a1f, #0a2414); border-color: #2a7a4a; color: #b0e0b0; }
+  .mini-verdict.tight { background: linear-gradient(135deg, #4a3a1a, #2a200a); border-color: #8a6a2a; color: #ffd700; }
+  .mini-verdict.warn  { background: linear-gradient(135deg, #5a1a0a, #3a0a00); border-color: #ff6b6b; color: #ffcccc; }
+  .mini-verdict.no    { background: linear-gradient(135deg, #7a0a0a, #4a0000); border-color: #ff2a2a; color: #ffcccc; }
+  .mini-verdict.low   { background: linear-gradient(135deg, #0f2a1f, #0a1a14); border-color: #2a6a4a; color: #a0d0b0; }
+
+  .msg-list { list-style: none; padding: 0; margin: 10px 0; }
+  .msg-list li { padding: 8px 12px; margin-bottom: 6px; border-radius: 6px; font-size: 0.82rem; line-height: 1.5; border-left: 3px solid; }
+  body.rtl .msg-list li { border-left: none; border-right: 3px solid; }
+  .msg-list li.danger { background: rgba(255,42,42,0.10); border-color: #ff2a2a; color: #ffb0b0; }
+  .msg-list li.warn   { background: rgba(242,163,101,0.10); border-color: #f2a365; color: #ffd0a0; }
+  .msg-list li.info   { background: rgba(77,171,247,0.10); border-color: #4dabf7; color: #a0d0ff; }
+  .msg-list li.ok     { background: rgba(111,207,151,0.10); border-color: #6fcf97; color: #b0e0b0; }
+  .msg-list li strong { color: #ffd700; }
+
+  .remedy-box { background: #0f1a24; border: 1px solid #2a4a5a; border-radius: 8px; padding: 12px 16px; margin-top: 12px; }
+  .remedy-box ul { list-style: none; padding: 0; }
+  .remedy-box li { font-size: 0.8rem; color: #b0c4de; padding: 4px 0 4px 22px; position: relative; line-height: 1.5; }
+  body.rtl .remedy-box li { padding: 4px 22px 4px 0; }
+  .remedy-box li::before { content: '→'; position: absolute; left: 4px; color: #4dabf7; font-weight: bold; }
+  body.rtl .remedy-box li::before { left: auto; right: 4px; content: '←'; }
+
+  .sl-block { margin-bottom: 14px; }
+  .sl-title { font-size: 0.8rem; font-weight: 700; color: #b0c4de; margin-bottom: 5px; }
+  .shortlist-row { display: flex; flex-wrap: nowrap; align-items: center; gap: 2px; overflow-x: auto; padding: 4px 0; border-bottom: 1px solid #1a2030; }
+  .shortlist-row:last-child { border-bottom: none; }
+
+  .slot {
+    width: 20px; height: 36px;
+    border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.68rem; font-weight: 800;
+    cursor: pointer; flex-shrink: 0;
+    transition: transform 0.12s;
+  }
+  .slot:hover { transform: scaleY(1.15); z-index: 5; }
+  .slot.elig { background: linear-gradient(180deg, #2a5a3a, #1a3a2a); border: 1px solid #4a8a5a; color: #b0e0b0; }
+  .slot.elim { background: linear-gradient(180deg, #5a2a2a, #3a1a1a); border: 1px solid #8a4a4a; color: #f28b8b; }
+  .slot.hole { background: repeating-linear-gradient(45deg, #2a1a1a, #2a1a1a 3px, #1a0a0a 3px, #1a0a0a 6px); border: 1px dashed #5a3a3a; color: #6a4a4a; opacity: 0.55; }
+  .slot.empty { background: #0d1219; border: 1px dashed #2a3a5a; }
+  .slot.threshold { box-shadow: inset 0 0 0 2px #ffd700; }
+
+  .threshold-marker { width: 3px; height: 42px; background: #ffd700; margin: 0 3px; flex-shrink: 0; box-shadow: 0 0 8px #ffd700; border-radius: 2px; }
+  .deficit-bracket, .gain-bracket { display: inline-flex; align-items: center; font-weight: bold; font-size: 0.72rem; margin-left: 8px; padding: 2px 8px; border-radius: 4px; flex-shrink: 0; }
+  body.rtl .deficit-bracket, body.rtl .gain-bracket { margin-left: 0; margin-right: 8px; }
+  .deficit-bracket { color: #ff6b6b; background: rgba(255,107,107,0.15); }
+  .gain-bracket { color: #ffd700; background: rgba(255,215,0,0.12); }
+  .legend-inline { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; font-size: 0.72rem; color: #9aaec9; }
+  .legend-inline span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  .info-box { background: #1f2a3a; border-left: 4px solid #ffd700; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
+  body.rtl .info-box { border-left: none; border-right: 4px solid #ffd700; }
+  .info-box h3 { color: #ffd700; font-size: 0.88rem; margin-bottom: 4px; }
+  .info-box p { margin: 3px 0; color: #b0c4de; line-height: 1.55; font-size: 0.84rem; }
+  .info-box code { font-family: 'Courier New', monospace; background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 3px; color: #ffd700; font-size: 0.82rem; }
+
+  .tables-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .table-wrap { background: #141b26; border-radius: 10px; padding: 12px; max-height: 560px; overflow-y: auto; }
+  .table-wrap h3 { color: #b0c4de; font-size: 0.86rem; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  th { text-align: left; padding: 5px 4px; background: #1f2a3a; color: #b0c4de; position: sticky; top: 0; z-index: 2; font-size: 0.72rem; }
+  body.rtl th { text-align: right; }
+  td { padding: 3px 4px; border-bottom: 1px solid #1f2a3a; }
+  tr.highlight-target td { background: rgba(255,215,0,0.15); font-weight: bold; }
+  tr.hole-row td { background: rgba(255,107,107,0.08); color: #f28b8b; }
+  tr.elimine td { background: #2a1a1a; color: #f28b8b; }
+  tr.conserve td { background: #1a2a1a; color: #b0e0b0; }
+  tr.median td { border-left: 3px solid #ffd700; }
+  body.rtl tr.median td { border-left: none; border-right: 3px solid #ffd700; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 12px; font-size: 0.64rem; font-weight: bold; }
+  .badge-elig { background: #1a3a1a; color: #6fcf97; }
+  .badge-elim { background: #3a1a1a; color: #f28b8b; }
+  .badge-target { background: #4a3a1a; color: #ffd700; }
+  .badge-median { background: #4a3a1a; color: #ffd700; }
+  .gain-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 900; font-family: 'Courier New', monospace; background: rgba(255,215,0,0.18); color: #ffd700; letter-spacing: 0.2px; }
+
+  .scroll-top { position: fixed; bottom: 20px; right: 20px; width: 42px; height: 42px; border-radius: 50%; background: #2a4a7a; color: white; border: none; font-size: 1.2rem; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 300; }
+  .scroll-top.show { opacity: 1; pointer-events: auto; }
+  body.rtl .scroll-top { right: auto; left: 20px; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1a5a3a; color: #e0e6ed; padding: 9px 18px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.55); opacity: 0; transition: all 0.25s; z-index: 400; pointer-events: none; border: 1px solid #2a7a4a; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.danger { background: #7a0a0a; border-color: #ff2a2a; }
+  .toast.fric { background: #5a3a1a; border-color: #f2a365; }
+
+  body.bar-hidden .header-row,
+  body.bar-hidden .stats-row { display: none; }
+  body.bar-hidden .params-row-always { border-bottom: none; }
+  body.bar-hidden .chart-container-compact { height: calc((100vh - 240px) / 2); max-height: 380px; }
+  body.bar-hidden .bottom-pair .card { max-height: calc(100vh - 320px); }
+
+  @media (max-width: 1200px) {
+    .diag-trio { grid-template-columns: 1fr 1fr; }
+    .diag-trio .diag-verdict { grid-column: span 2; }
+    .fric-metrics-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .compact-charts-grid { grid-template-columns: 1fr; }
+    .chart-container-compact { height: 200px; }
+    body.bar-hidden .chart-container-compact { height: 240px; max-height: 280px; }
+    .gauge-pair { grid-template-columns: 1fr; }
+    .bottom-pair { grid-template-columns: 1fr; }
+    .bottom-pair .card { max-height: none; }
+    .fric-top-pair { grid-template-columns: 1fr; }
+    .tables-grid { grid-template-columns: 1fr; }
+    .diag-trio { grid-template-columns: 1fr; }
+    .diag-trio .diag-verdict { grid-column: span 1; }
+    .header-row h1 { font-size: 0.88rem; }
+    .header-row h1 .sub { display: none; }
+    .stats-inline { margin-left: 0; width: 100%; }
+    .friction-bar-outer { min-width: 100%; }
+    .tab-btn { padding: 8px 12px; font-size: 0.78rem; }
+  }
+  @media (max-width: 620px) {
+    .sticky-header { padding: 6px 10px 0 10px; }
+    main { padding: 10px; }
+    .param-control input[type="number"] { width: 60px; }
+    .param-pill { padding: 4px 4px 3px 4px; }
+    .spin-btn { width: 24px; font-size: 0.95rem; }
+    .fric-metrics-row { grid-template-columns: 1fr; }
+    .slot { width: 18px; height: 32px; font-size: 0.62rem; }
+    .gain-cell { width: 18px; height: 24px; font-size: 0.7rem; }
+    .tabs { gap: 5px; }
+    .tab-btn { padding: 7px 10px; font-size: 0.74rem; }
+    .lang-menu { width: 220px; grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sticky-header" id="stickyHeader">
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="shortlist" id="tabBtnShortlist">🎯 Shortlist</button>
+    <button class="tab-btn" data-tab="sizing" id="tabBtnSizing">📊 Sizing</button>
+    <button class="tab-btn" data-tab="translation" id="tabBtnTranslation">🔄 Translation</button>
+    <button class="tab-btn diag" data-tab="diagnostic" id="tabBtnDiagnostic">🩺 Diagnostic</button>
+    <button class="tab-btn fric-tab" data-tab="friction" id="tabBtnFriction">🔥 Friction</button>
+    <button class="tab-btn" data-tab="tables" id="tabBtnTables">📋 Tables</button>
+    <button class="tab-btn" data-tab="legend" id="tabBtnLegend">📖 Legend</button>
+
+    <div class="tabs-right-group">
+      <div class="lang-select-wrap">
+        <button class="lang-select-btn" id="langSelectBtn" onclick="toggleLangMenu(event)" title="Language">
+          <span class="lang-flag" id="langFlag">🇬🇧</span>
+          <span class="lang-code" id="langCode">EN</span>
+          <span class="lang-caret">▾</span>
+        </button>
+        <div class="lang-menu" id="langMenu" role="menu">
+          <button class="lang-item active" data-lang="en" onclick="pickLang('en')"><span class="li-flag">🇬🇧</span><span class="li-name">English</span><span class="li-code">EN</span></button>
+          <button class="lang-item" data-lang="fr" onclick="pickLang('fr')"><span class="li-flag">🇫🇷</span><span class="li-name">Français</span><span class="li-code">FR</span></button>
+          <button class="lang-item" data-lang="de" onclick="pickLang('de')"><span class="li-flag">🇩🇪</span><span class="li-name">Deutsch</span><span class="li-code">DE</span></button>
+          <button class="lang-item" data-lang="es" onclick="pickLang('es')"><span class="li-flag">🇪🇸</span><span class="li-name">Español</span><span class="li-code">ES</span></button>
+          <button class="lang-item" data-lang="ar" onclick="pickLang('ar')"><span class="li-flag">🇸🇦</span><span class="li-name">العربية</span><span class="li-code">AR</span></button>
+          <button class="lang-item" data-lang="he" onclick="pickLang('he')"><span class="li-flag">🇮🇱</span><span class="li-name">עברית</span><span class="li-code">HE</span></button>
+        </div>
+      </div>
+      <button class="tab-btn toggle-bar" id="btnToggleBar" onclick="toggleBar()" title="Hide title & stats (H)">⬆ Hide</button>
+    </div>
+  </div>
+
+  <div class="params-row params-row-always" id="paramsBar">
+
+    <div class="param-pill" id="pillN">
+      <div class="param-control">
+        <button type="button" class="spin-btn minus" data-target="inN" data-dir="-1" aria-label="Decrease N">−</button>
+        <input type="number" id="inN" value="743" min="10" max="100000">
+        <button type="button" class="spin-btn plus" data-target="inN" data-dir="1" aria-label="Increase N">+</button>
+      </div>
+      <label><span class="sym">N</span><span class="name" id="paramNameN">Applications</span></label>
+    </div>
+
+    <div class="param-pill" id="pillM">
+      <div class="param-control">
+        <button type="button" class="spin-btn minus" data-target="inM" data-dir="-1" aria-label="Decrease m">−</button>
+        <input type="number" id="inM" value="296" min="1" max="100000">
+        <button type="button" class="spin-btn plus" data-target="inM" data-dir="1" aria-label="Increase m">+</button>
+      </div>
+      <label><span class="sym">m</span><span class="name" id="paramNameM">Exam-passed</span></label>
+    </div>
+
+    <div class="param-pill" id="pillP">
+      <div class="param-control">
+        <button type="button" class="spin-btn minus" data-target="inP" data-dir="-1" aria-label="Decrease P">−</button>
+        <input type="number" id="inP" value="146" min="1" max="100000">
+        <button type="button" class="spin-btn plus" data-target="inP" data-dir="1" aria-label="Increase P">+</button>
+      </div>
+      <label><span class="sym">P</span><span class="name" id="paramNameP">Positions</span></label>
+    </div>
+
+    <div class="param-pill" id="pillE">
+      <div class="param-control">
+        <button type="button" class="spin-btn minus" data-target="inE" data-dir="-1" aria-label="Decrease E">−</button>
+        <input type="number" id="inE" value="366" min="0" max="100000">
+        <button type="button" class="spin-btn plus" data-target="inE" data-dir="1" aria-label="Increase E">+</button>
+      </div>
+      <label><span class="sym">E</span><span class="name" id="paramNameE">Valid files (pop.)</span></label>
+    </div>
+
+    <div class="param-pill" id="pillAlpha">
+      <div class="param-control">
+        <button type="button" class="spin-btn minus" data-target="inAlpha" data-dir="-1" aria-label="Decrease alpha">−</button>
+        <input type="number" id="inAlpha" value="0.01" min="0.001" max="0.5" step="0.001">
+        <button type="button" class="spin-btn plus" data-target="inAlpha" data-dir="1" aria-label="Increase alpha">+</button>
+      </div>
+      <label><span class="sym">α</span><span class="name" id="paramNameAlpha">Target risk</span></label>
+    </div>
+
+    <div class="param-pill" id="pillOmega">
+      <div class="param-control">
+        <button type="button" class="spin-btn minus" data-target="inOmega" data-dir="-1" aria-label="Decrease omega">−</button>
+        <input type="number" id="inOmega" value="1.0" min="0.2" max="5.0" step="0.1">
+        <button type="button" class="spin-btn plus" data-target="inOmega" data-dir="1" aria-label="Increase omega">+</button>
+      </div>
+      <label><span class="sym">ω</span><span class="name" id="paramNameOmega">Odds ratio (Sec. 10)</span></label>
+    </div>
+
+    <div class="param-pill" id="pillSeed">
+      <div class="param-control">
+        <button type="button" class="spin-btn minus" data-target="inSeed" data-dir="-1" aria-label="Decrease seed">−</button>
+        <input type="number" id="inSeed" value="42" min="0" max="99999">
+        <button type="button" class="spin-btn plus" data-target="inSeed" data-dir="1" aria-label="Increase seed">+</button>
+      </div>
+      <label><span class="sym">seed</span><span class="name" id="paramNameSeed">Random seed</span></label>
+    </div>
+  </div>
+
+  <div class="header-row">
+    <h1><span id="txtTitle">Waitlist Sizing</span> <span class="sub" id="txtSub">— companion to Hajji-Fakir (2025)</span></h1>
+    <div class="presets">
+      <button class="preset" id="btnPresetArticle" onclick="loadPreset('article')">📄 Article</button>
+      <button class="preset" id="btnPresetSmall" onclick="loadPreset('small')">🧪 Small (Sec. 5)</button>
+      <button class="preset" id="btnPresetTight" onclick="loadPreset('tight')">⚡ Tight</button>
+      <button class="preset fric" id="btnPresetFriction" onclick="loadPreset('highfriction')">🟠 Friction</button>
+      <button class="preset nchg" id="btnPresetNCHG" onclick="loadPreset('nchg')">🎲 Correlated (ω≠1)</button>
+      <button class="preset" id="btnPresetInfeasible" onclick="loadPreset('infeasible')">🚨 Infeasible (E&lt;P)</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button class="primary" id="btnDraw" onclick="drawShortlist()">🎲 Draw</button>
+      <button class="gold" id="btnRecompute" onclick="computeAll()">🔄 Recompute</button>
+      <button id="btnCSV" onclick="exportCSV()">⬇ CSV</button>
+      <button id="btnJSON" onclick="exportJSON()">⬇ JSON</button>
+    </div>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stats-inline">
+      <span class="stat-pill green">E[K]=<b id="stEK">—</b><span class="ref">Eq. K</span></span>
+      <span class="stat-pill red">P(K&lt;P)=<b id="stDeficitRisk">—</b><span class="ref">§3</span></span>
+      <span class="stat-pill pink">E[Δ]=<b id="stDeficit">—</b><span class="ref">§2</span></span>
+      <span class="stat-pill pink">w_naive=<b id="stNaive">—</b><span class="ref">§3</span></span>
+      <span class="stat-pill gold">w*=<b id="stExact">—</b><span class="ref">Eq. 4.1</span></span>
+      <span class="stat-pill gold">ratio=<b id="stRatio">—</b><span class="ref">Tab. 5</span></span>
+      <span class="stat-pill orange">E[L]=<b id="stEL">—</b></span>
+      <span class="stat-pill purple">U=<b id="stU">—</b></span>
+      <span class="stat-pill purple">U/m=<b id="stElimRate">—</b></span>
+      <span class="stat-pill gold">H(K)=<b id="stEntropy">—</b></span>
+      <span class="stat-pill blue">r*=<b id="stRstar">—</b></span>
+      <span class="badge-group">
+        <span id="feasBadge" class="feas-badge ok">
+          <span class="icon">✅</span><span class="txt" id="feasTxt">FEASIBLE</span><span class="lvl" id="feasLvl">OK</span><span class="ref">Cor. 4.2</span>
+        </span>
+        <span id="fricBadge" class="fric-badge low">
+          <span class="fb-icon" id="fricBadgeIcon">✓</span>
+          <span class="fb-label" id="fricBadgeLabel">FRICTION</span>
+          <span class="fb-level" id="fricLvl">LOW</span>
+          <span class="fb-score" id="fricBadgeNum">0</span>
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <section class="tab-panel active" data-tab="shortlist">
+    <div class="pedago-banner" id="pedagoBanner">
+      <span class="pb-icon">📘</span>
+      <span id="pedagoText">Companion to <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025). The exact rule is Equation (4.1); the naive rule checks the wrong event.</span>
+    </div>
+
+    <div class="paper-note">
+      <span class="pn-title">Equation (4.1) — exact residual deficit risk</span>
+      <code>P(R_w &gt; 0) = Σ_{k=j_min}^{P-1} P(K=k) · F_{N-m, E-k, w}(P-k-1)</code><br>
+      The simulator computes this sum directly. The naive rule replaces <code>F_{N-m,E-k,w}(P-k-1)</code> by the indicator <code>1{P-k &gt; w}</code>.
+    </div>
+
+    <div class="card">
+      <h3 id="shortlistTitle">👁️ Shortlist visualization <span class="paper-ref">§1.2, Fig. 1</span></h3>
+      <div class="sl-block">
+        <div class="sl-title" id="shortlistStep1">1. Initial shortlist (merit-ranked)</div>
+        <div class="shortlist-row" id="rowInitial"></div>
+      </div>
+      <div class="sl-block">
+        <div class="sl-title" id="shortlistStep2">2. Paperwork check — files with missing documents create holes</div>
+        <div class="shortlist-row" id="rowAfterVerif"></div>
+      </div>
+      <div class="sl-block">
+        <div class="sl-title" id="shortlistStep3">3. After removing incomplete files — complete files keep their place</div>
+        <div class="shortlist-row" id="rowCompacted"></div>
+      </div>
+      <div class="sl-block">
+        <div class="sl-title" id="shortlistStep4">4. Final admission — top P complete files (with rank translation)</div>
+        <div class="shortlist-row" id="rowFinal"></div>
+        <div class="gain-row" id="rowGain"></div>
+        <div class="gain-summary" id="gainSummary"></div>
+      </div>
+      <div class="legend-inline">
+        <span><span class="swatch" style="background: linear-gradient(180deg,#2a5a3a,#1a3a2a); border:1px solid #4a8a5a;"></span> <span id="legEligible">Complete file</span></span>
+        <span><span class="swatch" style="background: linear-gradient(180deg,#5a2a2a,#3a1a1a); border:1px solid #8a4a4a;"></span> <span id="legNonEligible">Incomplete file</span></span>
+        <span><span class="swatch" style="background: repeating-linear-gradient(45deg,#2a1a1a,#2a1a1a 3px,#1a0a0a 3px,#1a0a0a 6px); border:1px dashed #5a3a3a;"></span> <span id="legHole">Hole (removed)</span></span>
+        <span><span class="swatch" style="background:#ffd700; width:4px;"></span> <span id="legThreshold">P threshold</span></span>
+        <span><span class="swatch" style="background: rgba(255,215,0,0.4); width:14px;"></span> <span id="legGain">Free steps gained</span></span>
+      </div>
+      <div class="vulgar-box" id="vulgarShortlist">
+        <span class="vulgar-title" id="vulgarShortlistTitle">In plain words</span>
+        <div id="vulgarShortlistText">—</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-panel" data-tab="sizing">
+    <div class="paper-note">
+      <span class="pn-title">Key distinction — §3 vs §4</span>
+      <strong>Naive rule (§3):</strong> choose the smallest w with <code>P(Δ &gt; w) ≤ α</code>. This treats the waitlist as if all w candidates were eligible.<br>
+      <strong>Exact rule (§4):</strong> choose the smallest w with <code>P(R_w &gt; 0) ≤ α</code>, where <code>R_w = max(0, P − K − K_w)</code>.
+    </div>
+
+    <div class="compact-charts-grid">
+      <div class="chart-card-compact">
+        <h3 id="chartDistTitle">📊 Distribution of K <span class="paper-ref">§2.2</span></h3>
+        <div class="chart-container-compact"><canvas id="chDistK"></canvas></div>
+        <div class="foot" id="chartDistFoot">Red bars: collapse region K &lt; P</div>
+        <div class="vulgar-box" id="vulgarDistK">
+          <span class="vulgar-title" id="vulgarDistKTitle">In plain words</span>
+          <div id="vulgarDistKText">—</div>
+        </div>
+      </div>
+      <div class="chart-card-compact">
+        <h3 id="chartCompareTitle">📉 Naive vs exact risk <span class="paper-ref">Fig. 2</span></h3>
+        <div class="chart-container-compact"><canvas id="chCompare"></canvas></div>
+        <div class="foot" id="chartCompareFoot">Blue: exact, Red: naive</div>
+        <div class="vulgar-box" id="vulgarCompare">
+          <span class="vulgar-title" id="vulgarCompareTitle">In plain words</span>
+          <div id="vulgarCompareText">—</div>
+        </div>
+      </div>
+      <div class="chart-card-compact">
+        <h3 id="chartSensTitle">🌡️ Sensitivity to E <span class="paper-ref">§10</span></h3>
+        <div class="chart-container-compact"><canvas id="chSensitivity"></canvas></div>
+        <div class="foot" id="chartSensFoot">P(K &lt; P) vs E</div>
+        <div class="vulgar-box" id="vulgarSens">
+          <span class="vulgar-title" id="vulgarSensTitle">In plain words</span>
+          <div id="vulgarSensText">—</div>
+        </div>
+      </div>
+      <div class="chart-card-compact">
+        <h3 id="chartWStarTitle">🎯 w* vs α <span class="paper-ref">Tab. 5</span></h3>
+        <div class="chart-container-compact"><canvas id="chWStar"></canvas></div>
+        <div class="foot" id="chartWStarFoot">Minimum w with P(R_w &gt; 0) ≤ α</div>
+        <div class="vulgar-box" id="vulgarWStar">
+          <span class="vulgar-title" id="vulgarWStarTitle">In plain words</span>
+          <div id="vulgarWStarText">—</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-panel" data-tab="translation">
+    <div class="paper-note">
+      <span class="pn-title">Rank translation — §7.2</span>
+      An eligible candidate at merit rank r moves up by a random number of places with mean <code>(r−1)·U/(m−1)</code> and variance <code>(r−1)·p_U·(1−p_U)·(m−r)/(m−2)</code>, maximal at the centre of the ranking.
+    </div>
+
+    <div class="compact-charts-grid">
+      <div class="chart-card-compact">
+        <h3 id="chartVarTitle">📈 Variance σ²(r) <span class="paper-ref">§7.2</span></h3>
+        <div class="chart-container-compact"><canvas id="chVar"></canvas></div>
+        <div class="foot" id="chartVarFoot">σ²(r) formula</div>
+        <div class="vulgar-box" id="vulgarVar">
+          <span class="vulgar-title" id="vulgarVarTitle">In plain words</span>
+          <div id="vulgarVarText">—</div>
+        </div>
+      </div>
+      <div class="chart-card-compact">
+        <h3 id="chartEnvTitle">🌊 Envelope E[X_r] ± 2σ <span class="paper-ref">§7.2</span></h3>
+        <div class="chart-container-compact"><canvas id="chEnv"></canvas></div>
+        <div class="foot" id="chartEnvFoot">Maximum uncertainty at centre</div>
+        <div class="vulgar-box" id="vulgarEnv">
+          <span class="vulgar-title" id="vulgarEnvTitle">In plain words</span>
+          <div id="vulgarEnvText">—</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-panel" data-tab="diagnostic">
+    <div class="diag-trio">
+      <div id="diagFeasBox" class="mini-verdict ok">
+        <div class="mv-icon" id="diagFeasIcon">✅</div>
+        <div class="mv-body">
+          <div class="mv-title" id="diagFeasTitle">FEASIBLE</div>
+          <div class="mv-sub" id="diagFeasSub">E ≥ P (Cor. 4.2)</div>
+        </div>
+      </div>
+      <div id="diagFricBox" class="mini-verdict low">
+        <div class="mv-icon" id="diagFricIcon">✓</div>
+        <div class="mv-body">
+          <div class="mv-title" id="diagFricTitle">FRICTION LOW</div>
+          <div class="mv-sub" id="diagFricSub">—</div>
+        </div>
+      </div>
+      <div id="diagVerdict" class="diag-verdict ok">
+        <div class="big-icon" id="diagIcon">✅</div>
+        <div class="verdict-text">
+          <div class="verdict-title" id="diagTitle">ROBUST</div>
+          <div class="verdict-sub" id="diagSub">—</div>
+        </div>
+        <div class="score-box">
+          <div class="num" id="diagScore">0</div>
+          <div class="lbl" id="diagScoreLabel">Score / 100</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vulgar-box" id="vulgarDiagSummary">
+      <span class="vulgar-title" id="vulgarDiagSummaryTitle">In plain words</span>
+      <div id="vulgarDiagSummaryText">—</div>
+    </div>
+
+    <div class="gauge-pair">
+      <div id="fricGaugeCard" class="friction-gauge-card low">
+        <div class="friction-gauge-header">
+          <div class="friction-gauge-title"><span>🔥</span> <span id="gaugeFricTitle">FRICTION LEVEL</span> <span class="paper-ref">heuristic</span></div>
+          <div class="friction-gauge-readout">
+            <span class="friction-gauge-num" id="fricGaugeNum" style="color:#6fcf97;">0</span>
+            <span class="friction-gauge-unit">/ 100</span>
+            <span class="friction-gauge-zone" id="fricGaugeZone" style="background:#0f3a1f;color:#b0e0b0;">LOW</span>
+          </div>
+        </div>
+        <div class="friction-bar-outer">
+          <div class="friction-bar-wrap">
+            <div class="friction-bar">
+              <div class="friction-ticks" id="fricTicks"></div>
+              <div class="friction-fill" id="fricFill" style="width:0%;"></div>
+              <div class="friction-segments" id="fricSegments"></div>
+              <div class="friction-peak" id="fricPeak" style="left:0%;color:#6fcf97;"></div>
+            </div>
+            <div class="friction-zone-labels" id="fricZoneLabels">
+              <span class="zone" data-zone="low" id="zoneLow">0–24 LOW</span>
+              <span class="zone" data-zone="mid" id="zoneMid">25–49 MOD</span>
+              <span class="zone" data-zone="high" id="zoneHigh">50–74 HIGH</span>
+              <span class="zone" data-zone="crit" id="zoneCrit">75–100 CRIT</span>
+            </div>
+          </div>
+        </div>
+        <div class="friction-state-msg low" id="fricStateMsg">—</div>
+        <div class="friction-factors-grid" id="fricFactorsGrid"></div>
+      </div>
+
+      <div id="volumeWidget" class="friction-gauge-card" style="border-color:#2a3a5a;">
+        <div class="friction-gauge-header">
+          <div class="friction-gauge-title"><span>🎚️</span> <span id="gaugeVolTitle">OVERALL DEGRADATION</span> <span class="paper-ref">heuristic</span></div>
+          <div class="friction-gauge-readout">
+            <span class="friction-gauge-num" id="volBigNum" style="color:#6fcf97;">0</span>
+            <span class="friction-gauge-unit">/ 100</span>
+            <span class="friction-gauge-zone" id="volZoneLabel" style="background:#0f3a1f;color:#b0e0b0;">LOW</span>
+          </div>
+        </div>
+        <div class="friction-bar-outer">
+          <div class="friction-bar-wrap">
+            <div class="friction-bar">
+              <div class="friction-fill" id="volFill" style="width:0%;"></div>
+              <div class="friction-segments" id="volSegments"></div>
+              <div class="friction-peak" id="volPeak" style="left:0%;color:#6fcf97;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-pair">
+      <div class="card">
+        <h3 id="diagRiskTitle">⚠️ Risk factors</h3>
+        <ul class="msg-list" id="msgList"></ul>
+      </div>
+      <div class="card">
+        <h3 id="diagRemedyTitle">🛠️ Remedies</h3>
+        <div class="remedy-box"><ul id="remedyList"></ul></div>
+      </div>
+    </div>
+
+    <div class="info-box" style="border-left-color: #ff2a2a; margin-top: 12px;">
+      <h3 id="infoFatalTitle">🔴 Why E &lt; P is fatal (Corollary 4.2)</h3>
+      <p id="infoFatalBody">—</p>
+    </div>
+
+    <div class="paper-note">
+      <span class="pn-title">Teaching note — §8.2</span>
+      The friction score and overall degradation are <em>heuristic</em> indicators computed by this simulator. They are not part of the article's theorems. They combine four normalised quantities: (i) the incomplete-file rate U/m; (ii) the normalised entropy H(K)/log|support|; (iii) the expected holes per position E[U]/P; (iv) the median volatility σ²(r*).
+    </div>
+  </section>
+
+  <section class="tab-panel" data-tab="friction">
+    <div class="fric-top-pair">
+      <div id="fricGaugeCard2" class="friction-gauge-card low">
+        <div class="friction-gauge-header">
+          <div class="friction-gauge-title"><span>🔥</span> <span id="gaugeFric2Title">FRICTION GAUGE</span> <span class="paper-ref">heuristic</span></div>
+          <div class="friction-gauge-readout">
+            <span class="friction-gauge-num" id="fricGaugeNum2" style="color:#6fcf97;">0</span>
+            <span class="friction-gauge-unit">/ 100</span>
+            <span class="friction-gauge-zone" id="fricGaugeZone2" style="background:#0f3a1f;color:#b0e0b0;">LOW</span>
+          </div>
+        </div>
+        <div class="friction-bar-outer">
+          <div class="friction-bar-wrap">
+            <div class="friction-bar">
+              <div class="friction-ticks" id="fricTicks2"></div>
+              <div class="friction-fill" id="fricFill2" style="width:0%;"></div>
+              <div class="friction-segments" id="fricSegments2"></div>
+              <div class="friction-peak" id="fricPeak2" style="left:0%;color:#6fcf97;"></div>
+            </div>
+            <div class="friction-zone-labels" id="fricZoneLabels2">
+              <span class="zone" data-zone="low">0–24 LOW</span>
+              <span class="zone" data-zone="mid">25–49 MOD</span>
+              <span class="zone" data-zone="high">50–74 HIGH</span>
+              <span class="zone" data-zone="crit">75–100 CRIT</span>
+            </div>
+          </div>
+        </div>
+        <div class="friction-state-msg low" id="fricStateMsg2">—</div>
+      </div>
+
+      <div id="fricVerdict" class="diag-verdict low">
+        <div class="big-icon" id="fricIcon">✓</div>
+        <div class="verdict-text">
+          <div class="verdict-title" id="fricTitle">FRICTION LOW</div>
+          <div class="verdict-sub" id="fricSub">—</div>
+        </div>
+        <div class="score-box">
+          <div class="num" id="fricScore">0</div>
+          <div class="lbl" id="fricScoreLabel">Friction / 100</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vulgar-box" id="vulgarFricSummary">
+      <span class="vulgar-title" id="vulgarFricSummaryTitle">In plain words</span>
+      <div id="vulgarFricSummaryText">—</div>
+    </div>
+
+    <div class="fric-metrics-row" id="fricMetricGrid"></div>
+
+    <div class="bottom-pair">
+      <div class="card">
+        <h3 id="fricInterpTitle">💬 Interpretation</h3>
+        <ul class="msg-list" id="fricMsgList"></ul>
+      </div>
+      <div class="card">
+        <h3 id="fricRemedyTitle">🛠️ Remedies</h3>
+        <div class="remedy-box"><ul id="fricRemedyList"></ul></div>
+      </div>
+    </div>
+
+    <div class="info-box" style="border-left-color: #f2a365; margin-top: 12px;">
+      <h3 id="infoFricTitle">🟠 Why incomplete files create friction (§7)</h3>
+      <p id="infoFricBody">—</p>
+    </div>
+
+    <div class="paper-note">
+      <span class="pn-title">Noncentral hypergeometric — §10</span>
+      When merit and eligibility are correlated with odds ratio ω ≠ 1, K ~ NCHG(N, E, m, ω) with pmf
+      <code>P(K=k) ∝ C(E,k)·C(N−E,m−k)·ω^k</code>. Set the ω parameter above to explore this regime.
+      The conditional law of K_w | k is unaffected by ω, so Equation (4.1) remains valid with the hypergeometric pmf of K replaced by the noncentral version.
+    </div>
+  </section>
+
+  <section class="tab-panel" data-tab="tables">
+    <div class="tables-grid" style="margin-bottom:14px;">
+      <div class="table-wrap">
+        <h3 id="tableCompareTitle">📋 Naive vs exact <span class="paper-ref">Tab. 5</span></h3>
+        <table>
+          <thead><tr>
+            <th id="thAlpha">Target α</th>
+            <th id="thNaive">Naive w</th>
+            <th id="thExact">Exact w*</th>
+            <th id="thRatio">Ratio</th>
+            <th id="thRiskNaive">Risk at naive w</th>
+          </tr></thead>
+          <tbody id="tbCompare"></tbody>
+        </table>
+      </div>
+      <div class="table-wrap">
+        <h3 id="tableHolesTitle">🕳️ Holes per candidate <span class="paper-ref">§7</span></h3>
+        <table>
+          <thead><tr>
+            <th id="thRank">Rank</th>
+            <th id="thStatus">File status</th>
+            <th id="thHolesAbove">Holes above</th>
+            <th id="thNewRank">New rank</th>
+            <th id="thGain">Free steps</th>
+            <th>σ²(r)</th>
+          </tr></thead>
+          <tbody id="tbHoles"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="tables-grid">
+      <div class="table-wrap">
+        <h3 id="tableInitTitle">🔹 Initial merit list</h3>
+        <table>
+          <thead><tr>
+            <th id="thInitRank">Rank</th>
+            <th id="thInitName">Name</th>
+            <th id="thInitScore">Score</th>
+            <th id="thInitStatus">File status</th>
+            <th>X_r</th>
+            <th>σ²(r)</th>
+          </tr></thead>
+          <tbody id="tbInit"></tbody>
+        </table>
+      </div>
+      <div class="table-wrap">
+        <h3 id="tableFinalTitle">🔸 Final announced list</h3>
+        <table>
+          <thead><tr>
+            <th id="thFinalNewRank">Announced rank</th>
+            <th id="thFinalName">Name</th>
+            <th id="thFinalScore">Score</th>
+            <th id="thFinalGain">Free steps</th>
+            <th>σ²(r)</th>
+          </tr></thead>
+          <tbody id="tbFinal"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-panel" data-tab="legend">
+    <div class="card">
+      <h3 id="legendTitle">📖 Complete Legend</h3>
+      <div class="legend-subtitle" id="legendInputTitle">🔹 Input parameters</div>
+      <div class="legend-grid" id="legendGridInput"></div>
+      <div class="legend-subtitle" id="legendDerivedTitle">🔸 Derived quantities</div>
+      <div class="legend-grid" id="legendGridDerived"></div>
+      <div class="legend-subtitle" id="legendDecisionsTitle">🟡 Decisions</div>
+      <div class="legend-grid" id="legendGridDecisions"></div>
+    </div>
+    <div class="paper-note">
+      <span class="pn-title">Article reference</span>
+      A. Hajji-Fakir (2025). <em>Why Waitlists Need to Be Longer Than You Think: A Note on Deferred Verification.</em> Section: Teacher's Corner. All numbered references (§, Eq., Prop., Cor., Tab., Fig., Sec.) point to the article. Items marked <strong>heuristic</strong> are simulator-specific constructs, not part of the paper.
+    </div>
+  </section>
+
+</main>
+
+<button class="scroll-top" id="scrollTopBtn" onclick="window.scrollTo({top:0, behavior:'smooth'})" title="↑">↑</button>
+
+<script>
+/* ============================================================
+   I18N — keep short; the article reference layer is the same in all languages
+   ============================================================ */
+const I18N = {
+  en: {
+    title: "Waitlist Sizing", sub: "— companion to Hajji-Fakir (2025)",
+    presetArticle: "📄 Article", presetSmall: "🧪 Small (Sec. 5)", presetTight: "⚡ Tight", presetFriction: "🟠 Friction", presetNCHG: "🎲 Correlated (ω≠1)", presetInfeasible: "🚨 Infeasible (E<P)",
+    btnDraw: "🎲 Draw", btnRecompute: "🔄 Recompute", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
+    btnHideBar: "⬆ Hide", btnShowBar: "⬇ Show",
+    paramNameN: "Applications", paramNameM: "Exam-passed", paramNameP: "Positions", paramNameE: "Valid files (pop.)", paramNameAlpha: "Target risk", paramNameOmega: "Odds ratio (Sec. 10)", paramNameSeed: "Random seed",
+    paramTipN: "N — Total number of applications received (§2.1)",
+    paramTipM: "m — Candidates who passed the written and oral exams (§2.1)",
+    paramTipP: "P — Number of positions to be filled (§2.1)",
+    paramTipE: "E — Candidates in the population whose administrative file is complete (§2.1)",
+    paramTipAlpha: "α — Maximum tolerated probability of an unfilled position (§3)",
+    paramTipOmega: "ω — Odds ratio for merit–eligibility correlation (§10). ω=1 is the baseline; ω>1 = positive correlation; ω<1 = negative.",
+    paramTipSeed: "Seed — Deterministic seed for reproducibility of the draw",
+    feasTxt: "FEASIBLE", nonfeasTxt: "NON-FEASIBLE", fricLabel: "FRICTION",
+    lvlOK: "OK", lvlTight: "TIGHT", lvlModerate: "MODERATE", lvlCritical: "CRITICAL",
+    fricLow: "LOW", fricModerate: "MODERATE", fricHigh: "HIGH", fricCritical: "CRITICAL",
+    badgeComplete: "Complete", badgeIncomplete: "Incomplete",
+    tabShortlist: "🎯 Shortlist", tabSizing: "📊 Sizing", tabTranslation: "🔄 Translation", tabDiagnostic: "🩺 Diagnostic", tabFriction: "🔥 Friction", tabTables: "📋 Tables", tabLegend: "📖 Legend",
+    shortlistTitle: "👁️ Shortlist visualization — where are the incomplete files?",
+    shortlistStep1: "1. Initial shortlist — ranked by merit",
+    shortlistStep2: "2. Paperwork check — incomplete files create holes",
+    shortlistStep3: "3. After removal — complete files keep their place",
+    shortlistStep4: "4. Final admission — top P complete files (with rank translation)",
+    legEligible: "Complete file", legNonEligible: "Incomplete file", legHole: "Hole (removed)", legEmpty: "Empty", legThreshold: "P threshold",
+    legGain: "Free steps gained",
+    chartDistTitle: "📊 Distribution of K ~ Hypergeometric(N, E, m)",
+    chartDistFoot: "Red bars: collapse region K < P.",
+    chartCompareTitle: "📉 Naive vs exact residual risk",
+    chartCompareFoot: "Blue: exact P(R_w > 0). Red dashed: naive P(Δ > w).",
+    chartSensTitle: "🌡️ Sensitivity to E (feasibility frontier)",
+    chartSensFoot: "P(K < P) as a function of E.",
+    chartWStarTitle: "🎯 Exact w* as a function of α",
+    chartWStarFoot: "Minimum waitlist achieving residual risk ≤ α.",
+    chartVarTitle: "📈 Variance σ²(r) of rank translation",
+    chartVarFoot: "σ²(r) = (r−1)·p_U·(1−p_U)·(m−r)/(m−2).",
+    chartEnvTitle: "🌊 Envelope E[X_r] ± 2σ",
+    chartEnvFoot: "E[X_r] = (r−1)·(1−p). Max uncertainty at centre r*.",
+    diagScore: "Score / 100", gaugeFricTitle: "FRICTION LEVEL", gaugeFric2Title: "FRICTION GAUGE", gaugeVolTitle: "OVERALL DEGRADATION",
+    zoneLow: "0–24 LOW", zoneMid: "25–49 MODERATE", zoneHigh: "50–74 HIGH", zoneCrit: "75–100 CRITICAL",
+    diagRiskTitle: "⚠️ Detailed analysis — risk factors", diagRemedyTitle: "🛠️ Recommended remedies",
+    infoFatalTitle: "🔴 Why E < P is fatal (Corollary 4.2)",
+    infoFatalBody: "If E ≥ P, then P(R_{N−m} > 0) = 0 — any target α ∈ (0,1) is achievable. Conversely, if E < P, then P(R_w > 0) = 1 for all w: no waitlist size can satisfy the target.",
+    fricScoreLabel: "Friction / 100", fricInterpTitle: "💬 Interpretation", fricRemedyTitle: "🛠️ Remedies to reduce friction",
+    infoFricTitle: "🟠 Why incomplete files create friction (§7)",
+    infoFricBody: "Even when K ≥ P, the U = m − K candidates with incomplete files create holes that shift ranks. This is the rank-translation mechanism of §7.",
+    tableCompareTitle: "📋 Naive vs exact for several α", thAlpha: "Target α", thNaive: "Naive w", thExact: "Exact w*", thRatio: "Ratio", thRiskNaive: "Risk at naive w",
+    tableHolesTitle: "🕳️ Simulated shortlist — holes per candidate", thRank: "Rank", thStatus: "File status", thHolesAbove: "Holes above", thNewRank: "New rank", thGain: "Free steps",
+    tableInitTitle: "🔹 Initial merit list", thInitRank: "Rank", thInitName: "Name", thInitScore: "Score", thInitStatus: "File status",
+    tableFinalTitle: "🔸 Final announced list", thFinalNewRank: "Announced rank", thFinalName: "Name", thFinalScore: "Score", thFinalGain: "Free steps",
+    legendTitle: "📖 Complete Legend", legendInputTitle: "🔹 Input parameters", legendDerivedTitle: "🔸 Derived quantities", legendDecisionsTitle: "🟡 Decision quantities",
+    verdictNonfeas: "NON-FEASIBLE", verdictCritical: "CRITICAL SYSTEM", verdictAlarm: "SYSTEM IN ALARM", verdictHigh: "HIGH TENSION", verdictModerate: "MODERATE TENSION", verdictRobust: "ROBUST SYSTEM",
+    verdictFeasHighFric: "FEASIBLE BUT HIGH FRICTION", verdictFeasModFric: "FEASIBLE — MODERATE FRICTION", verdictTensionHighFric: "TENSION + HIGH FRICTION",
+    stateLow: "✓ <strong>LOW FRICTION</strong> — system is fluid.",
+    stateMid: "🟡 <strong>MODERATE FRICTION</strong> — noticeable but manageable.",
+    stateHigh: "⚠️ <strong>HIGH FRICTION</strong> — incomplete files weigh heavily.",
+    stateCrit: "🔥 <strong>CRITICAL FRICTION</strong> — rank translation dominates.",
+    vulgarHeader: "In plain words", vulgarDiagHeader: "In plain words — what your numbers mean", vulgarFricHeader: "In plain words — what is friction?",
+    vulgShortlist: "Stage 1: <span class='vulgar-num'>{m}</span> candidates pass the exams. Stage 2: only those with complete files count. Here <span class='vulgar-num'>{K}</span> files are complete, <span class='vulgar-num'>{U}</span> are not. Each incomplete file pushes everyone below up by one step. Green = 0 free steps, yellow = 1–4, orange = 5+.",
+    vulgDistK: "Merit selects <span class='vulgar-num'>{m}</span>; paperwork keeps a fraction. Typical complete-file count: <span class='vulgar-num'>{EK}</span>. Red zone: <span class='vulgar-danger'>happens {pctRisk}% of the time.</span>",
+    vulgCompare: "Red = naive (<span class='vulgar-num'>{wN}</span> slots). Blue = exact (<span class='vulgar-num'>{wE}</span> slots). Ratio: <span class='vulgar-num'>{ratio}×</span>. Real risk at naive size: <span class='vulgar-danger'>{realRisk}%</span>.",
+    vulgSens: "If the valid-file pool E grows, collapse risk drops to zero. Current E = <span class='vulgar-num'>{E}</span>.",
+    vulgWStar: "Safety vs effort. α = 0.01 → <span class='vulgar-num'>{wE}</span> slots. α = 0.05 → <span class='vulgar-num'>{wE5}</span>.",
+    vulgVar: "Mid-ranked candidates gain the most places. Top and bottom barely move.",
+    vulgEnv: "Average places gained per rank: mid-rank ≈ <span class='vulgar-num'>{meanMid}</span> ± <span class='vulgar-num'>{sdMid}</span>.",
+    vulgDiagSummary: "System: <strong>{verdict}</strong>. Complete files expected: <span class='vulgar-num'>{EK}</span>. Positions: <span class='vulgar-num'>{P}</span>. Margin: <span class='vulgar-num'>{margin}</span>. Failure risk: <span class='vulgar-danger'>{pctRisk}%</span>. Naive w = <span class='vulgar-num'>{wN}</span>; exact w* = <span class='vulgar-num'>{wE}</span>.",
+    vulgFricSummary: "Incomplete-file rate: <span class='vulgar-num'>{elimPct}%</span>. Each position absorbs <span class='vulgar-num'>{hpp}</span> hole(s). Even without deficit, mid-ranked candidates face real uncertainty — that is friction.",
+    gainSummaryTitle: "Free steps gained by admitted candidates:",
+    gainSummaryMin: "min", gainSummaryAvg: "avg", gainSummaryMax: "max",
+    gainSummaryTotal: "Total admitted", gainSummaryWithGain: "with at least 1 free step",
+    badgeEligible: "Complete", badgeNonEligible: "Incomplete", badgeMed: "★ Median", badgeRef: "ref",
+    tableEmpty: "No conserved candidates.",
+    fricFactorElim: "Incomplete-file rate U/m", fricFactorH: "Entropy H(K)/log|supp|", fricFactorHpp: "Holes / position E[U]/P", fricFactorVar: "Median volatility σ²(r*)",
+    fricMetricElim: "Incomplete-file rate U/m", fricMetricH: "Entropy H(K)/log|supp|", fricMetricHpp: "Holes per position E[U]/P", fricMetricVar: "Median volatility σ²(r*)",
+    toastCSV: "CSV exported", toastJSON: "JSON exported",
+    toastBarHidden: "Title & stats hidden — tabs and parameters stay visible (H to restore)",
+    pedagoFeasible: "Companion to <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025). The exact rule is Equation (4.1); the naive rule checks the wrong event.",
+    pedagoHalf: "📐 <strong>Half the sessions end in deficit:</strong> E[K] ≈ P here, so the case study's warning applies directly — see §6 of the article.",
+    pedagoOmega: "🎲 <strong>Noncentral hypergeometric mode active (ω = {omega}):</strong> K follows NCHG(N, E, m, ω). The conditional law of K_w | k is unchanged, so Eq. (4.1) still holds — see §10 and Exercise 7.",
+    pedagoInfeasible: "🚨 <strong>E &lt; P:</strong> by Corollary 4.2, no finite waitlist can achieve the target. The only remedies are to enlarge E or reduce P.",
+    pedagoEq41: "Eq. (4.1)"
+  },
+  fr: {
+    title: "Dimensionnement de liste d'attente", sub: "— compagnon de Hajji-Fakir (2025)",
+    presetArticle: "📄 Article", presetSmall: "🧪 Petit (§5)", presetTight: "⚡ Serré", presetFriction: "🟠 Friction", presetNCHG: "🎲 Corrélé (ω≠1)", presetInfeasible: "🚨 Infaisable (E<P)",
+    btnDraw: "🎲 Tirage", btnRecompute: "🔄 Recalculer", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
+    btnHideBar: "⬆ Masquer", btnShowBar: "⬇ Afficher",
+    paramNameN: "Candidatures", paramNameM: "Admis aux épreuves", paramNameP: "Postes à pourvoir", paramNameE: "Dossiers valides", paramNameAlpha: "Risque cible", paramNameOmega: "Odds ratio (§10)", paramNameSeed: "Graine aléatoire",
+    paramTipN: "N — Nombre total de candidatures (§2.1)",
+    paramTipM: "m — Candidats ayant réussi les épreuves (§2.1)",
+    paramTipP: "P — Nombre de postes à pourvoir (§2.1)",
+    paramTipE: "E — Candidats dont le dossier administratif est complet (§2.1)",
+    paramTipAlpha: "α — Probabilité maximale tolérée d'un poste non pourvu (§3)",
+    paramTipOmega: "ω — Odds ratio pour la corrélation mérite–éligibilité (§10).",
+    paramTipSeed: "Graine — Graine déterministe",
+    feasTxt: "FAISABLE", nonfeasTxt: "NON FAISABLE", fricLabel: "FRICTION",
+    lvlOK: "OK", lvlTight: "TENDU", lvlModerate: "MODÉRÉ", lvlCritical: "CRITIQUE",
+    fricLow: "FAIBLE", fricModerate: "MODÉRÉ", fricHigh: "ÉLEVÉ", fricCritical: "CRITIQUE",
+    badgeComplete: "Complet", badgeIncomplete: "Incomplet",
+    tabShortlist: "🎯 Liste", tabSizing: "📊 Dimensionnement", tabTranslation: "🔄 Translation", tabDiagnostic: "🩺 Diagnostic", tabFriction: "🔥 Friction", tabTables: "📋 Tableaux", tabLegend: "📖 Légende",
+    shortlistTitle: "👁️ Visualisation — où sont les dossiers incomplets ?",
+    shortlistStep1: "1. Liste initiale — triée par mérite", shortlistStep2: "2. Vérification — les dossiers incomplets créent des trous",
+    shortlistStep3: "3. Après retrait — les dossiers complets restent", shortlistStep4: "4. Admission finale — top P dossiers complets",
+    legEligible: "Dossier complet", legNonEligible: "Dossier incomplet", legHole: "Trou", legEmpty: "Vide", legThreshold: "Seuil P",
+    legGain: "Pas gratuits gagnés",
+    chartDistTitle: "📊 Distribution de K ~ Hypergéométrique(N, E, m)", chartDistFoot: "Barres rouges : K < P.",
+    chartCompareTitle: "📉 Risque naïf vs exact", chartCompareFoot: "Bleu : exact. Rouge : naïf.",
+    chartSensTitle: "🌡️ Sensibilité à E", chartSensFoot: "P(K < P) en fonction de E.",
+    chartWStarTitle: "🎯 w* exact en fonction de α", chartWStarFoot: "Taille minimale avec P(R_w > 0) ≤ α.",
+    chartVarTitle: "📈 Variance σ²(r)", chartVarFoot: "σ²(r) = (r−1)·p_U·(1−p_U)·(m−r)/(m−2).",
+    chartEnvTitle: "🌊 Enveloppe E[X_r] ± 2σ", chartEnvFoot: "E[X_r] = (r−1)·(1−p).",
+    diagScore: "Score / 100", gaugeFricTitle: "NIVEAU DE FRICTION", gaugeFric2Title: "JAUGE DE FRICTION", gaugeVolTitle: "DÉGRADATION GLOBALE",
+    zoneLow: "0–24 FAIBLE", zoneMid: "25–49 MODÉRÉ", zoneHigh: "50–74 ÉLEVÉ", zoneCrit: "75–100 CRITIQUE",
+    diagRiskTitle: "⚠️ Analyse détaillée", diagRemedyTitle: "🛠️ Remèdes",
+    infoFatalTitle: "🔴 Pourquoi E < P est fatal (Corollaire 4.2)",
+    infoFatalBody: "Si E ≥ P, alors P(R > 0) = 0. Sinon P(R > 0) = 1 pour tout w.",
+    fricScoreLabel: "Friction / 100", fricInterpTitle: "💬 Interprétation", fricRemedyTitle: "🛠️ Remèdes",
+    infoFricTitle: "🟠 Pourquoi les dossiers incomplets créent de la friction (§7)",
+    infoFricBody: "Même quand K ≥ P, les U = m − K candidats à dossier incomplet créent des trous.",
+    tableCompareTitle: "📋 Naïf vs exact", thAlpha: "α cible", thNaive: "w naïf", thExact: "w* exact", thRatio: "Ratio", thRiskNaive: "Risque à w naïf",
+    tableHolesTitle: "🕳️ Trous par candidat", thRank: "Rang", thStatus: "Statut dossier", thHolesAbove: "Trous au-dessus", thNewRank: "Nouveau rang", thGain: "Pas gratuits",
+    tableInitTitle: "🔹 Liste initiale", thInitRank: "Rang", thInitName: "Nom", thInitScore: "Note", thInitStatus: "Statut",
+    tableFinalTitle: "🔸 Liste finale annoncée", thFinalNewRank: "Rang annoncé", thFinalName: "Nom", thFinalScore: "Note", thFinalGain: "Pas gratuits",
+    legendTitle: "📖 Légende", legendInputTitle: "🔹 Paramètres", legendDerivedTitle: "🔸 Quantités dérivées", legendDecisionsTitle: "🟡 Décisions",
+    verdictNonfeas: "NON FAISABLE", verdictCritical: "SYSTÈME CRITIQUE", verdictAlarm: "SYSTÈME EN ALARME", verdictHigh: "TENSION ÉLEVÉE", verdictModerate: "TENSION MODÉRÉE", verdictRobust: "SYSTÈME ROBUSTE",
+    verdictFeasHighFric: "FAISABLE MAIS FRICTION ÉLEVÉE", verdictFeasModFric: "FAISABLE — FRICTION MODÉRÉE", verdictTensionHighFric: "TENSION + FRICTION ÉLEVÉE",
+    stateLow: "✓ <strong>FRICTION FAIBLE</strong>.",
+    stateMid: "🟡 <strong>FRICTION MODÉRÉE</strong>.",
+    stateHigh: "⚠️ <strong>FRICTION ÉLEVÉE</strong>.",
+    stateCrit: "🔥 <strong>FRICTION CRITIQUE</strong>.",
+    vulgarHeader: "En clair", vulgarDiagHeader: "En clair — ce que vos chiffres signifient", vulgarFricHeader: "En clair — c'est quoi la friction ?",
+    vulgShortlist: "Étape 1 : <span class='vulgar-num'>{m}</span> candidats réussissent. Étape 2 : seuls les dossiers complets comptent. Ici <span class='vulgar-num'>{K}</span> complets, <span class='vulgar-num'>{U}</span> incomplets.",
+    vulgDistK: "Le mérite retient <span class='vulgar-num'>{m}</span> ; le dossier en garde une fraction. Nombre typique : <span class='vulgar-num'>{EK}</span>. Zone rouge : <span class='vulgar-danger'>arrive {pctRisk} % du temps.</span>",
+    vulgCompare: "Rouge = naïf (<span class='vulgar-num'>{wN}</span>). Bleu = exact (<span class='vulgar-num'>{wE}</span>). Ratio : <span class='vulgar-num'>{ratio}×</span>. Risque réel : <span class='vulgar-danger'>{realRisk} %</span>.",
+    vulgSens: "Si E grandit, le risque tombe à zéro. E actuel = <span class='vulgar-num'>{E}</span>.",
+    vulgWStar: "Sécurité vs effort. α = 0,01 → <span class='vulgar-num'>{wE}</span>. α = 0,05 → <span class='vulgar-num'>{wE5}</span>.",
+    vulgVar: "Les candidats du milieu gagnent le plus de places.",
+    vulgEnv: "Gain moyen : milieu ≈ <span class='vulgar-num'>{meanMid}</span> ± <span class='vulgar-num'>{sdMid}</span>.",
+    vulgDiagSummary: "Système : <strong>{verdict}</strong>. Dossiers complets : <span class='vulgar-num'>{EK}</span>. Postes : <span class='vulgar-num'>{P}</span>. Marge : <span class='vulgar-num'>{margin}</span>. Risque : <span class='vulgar-danger'>{pctRisk} %</span>.",
+    vulgFricSummary: "Taux de dossiers incomplets : <span class='vulgar-num'>{elimPct} %</span>. Chaque poste absorbe <span class='vulgar-num'>{hpp}</span> trou(s).",
+    gainSummaryTitle: "Pas gratuits gagnés par les candidats admis :",
+    gainSummaryMin: "min", gainSummaryAvg: "moy", gainSummaryMax: "max",
+    gainSummaryTotal: "Admis", gainSummaryWithGain: "avec au moins 1 pas gratuit",
+    badgeEligible: "Complet", badgeNonEligible: "Incomplet", badgeMed: "★ Médian", badgeRef: "réf",
+    tableEmpty: "Aucun conservé.",
+    fricFactorElim: "Taux de dossiers incomplets U/m", fricFactorH: "Entropie H(K)/log|supp|", fricFactorHpp: "Trous / poste E[U]/P", fricFactorVar: "Volatilité médiane σ²(r*)",
+    fricMetricElim: "Taux U/m", fricMetricH: "H(K)/log|supp|", fricMetricHpp: "Trous / poste", fricMetricVar: "σ²(r*)",
+    toastCSV: "CSV exporté", toastJSON: "JSON exporté",
+    toastBarHidden: "Titre & stats masqués (H pour restaurer)",
+    pedagoFeasible: "Compagnon de <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025).",
+    pedagoHalf: "📐 <strong>La moitié des sessions finit en déficit :</strong> E[K] ≈ P — voir §6 de l'article.",
+    pedagoOmega: "🎲 <strong>Mode hypergéométrique non centré (ω = {omega}) :</strong> K ~ NCHG(N, E, m, ω) — voir §10 et exercice 7.",
+    pedagoInfeasible: "🚨 <strong>E &lt; P :</strong> par le Corollaire 4.2, aucune liste ne peut atteindre la cible.",
+    pedagoEq41: "Éq. (4.1)"
+  },
+  de: {
+    title: "Wartelisten-Bemessung", sub: "— Begleiter zu Hajji-Fakir (2025)",
+    presetArticle: "📄 Artikel", presetSmall: "🧪 Klein (§5)", presetTight: "⚡ Eng", presetFriction: "🟠 Reibung", presetNCHG: "🎲 Korreliert (ω≠1)", presetInfeasible: "🚨 Undurchführbar (E<P)",
+    btnDraw: "🎲 Ziehen", btnRecompute: "🔄 Neu berechnen", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
+    btnHideBar: "⬆ Ausblenden", btnShowBar: "⬇ Einblenden",
+    paramNameN: "Bewerbungen", paramNameM: "Prüfungsbestandene", paramNameP: "Stellen", paramNameE: "Gültige Unterlagen", paramNameAlpha: "Zielrisiko", paramNameOmega: "Odds Ratio (§10)", paramNameSeed: "Zufallsseed",
+    paramTipN: "N — Gesamtzahl der Bewerbungen (§2.1)",
+    paramTipM: "m — Kandidaten mit bestandener Prüfung (§2.1)",
+    paramTipP: "P — Anzahl der Stellen (§2.1)",
+    paramTipE: "E — Kandidaten mit vollständigen Unterlagen (§2.1)",
+    paramTipAlpha: "α — Maximal toleriertes Risiko (§3)",
+    paramTipOmega: "ω — Odds Ratio für Merit–Eligibility-Korrelation (§10).",
+    paramTipSeed: "Seed — Deterministischer Seed",
+    feasTxt: "DURCHFÜHRBAR", nonfeasTxt: "NICHT DURCHFÜHRBAR", fricLabel: "REIBUNG",
+    lvlOK: "OK", lvlTight: "ENG", lvlModerate: "MODERAT", lvlCritical: "KRITISCH",
+    fricLow: "NIEDRIG", fricModerate: "MODERAT", fricHigh: "HOCH", fricCritical: "KRITISCH",
+    badgeComplete: "Vollständig", badgeIncomplete: "Unvollständig",
+    tabShortlist: "🎯 Liste", tabSizing: "📊 Bemessung", tabTranslation: "🔄 Übersetzung", tabDiagnostic: "🩺 Diagnose", tabFriction: "🔥 Reibung", tabTables: "📋 Tabellen", tabLegend: "📖 Legende",
+    shortlistTitle: "👁️ Listenvisualisierung",
+    shortlistStep1: "1. Ursprüngliche Liste", shortlistStep2: "2. Unterlagenprüfung",
+    shortlistStep3: "3. Nach Entfernung", shortlistStep4: "4. Endgültige Zulassung",
+    legEligible: "Vollständig", legNonEligible: "Unvollständig", legHole: "Lücke", legEmpty: "Leer", legThreshold: "P-Schwelle",
+    legGain: "Gratis-Schritte",
+    chartDistTitle: "📊 Verteilung von K", chartDistFoot: "Rot: K < P.",
+    chartCompareTitle: "📉 Naiv vs exakt", chartCompareFoot: "Blau: exakt. Rot: naiv.",
+    chartSensTitle: "🌡️ Sensitivität E", chartSensFoot: "P(K < P) vs E.",
+    chartWStarTitle: "🎯 w* vs α", chartWStarFoot: "Minimale Warteliste.",
+    chartVarTitle: "📈 Varianz σ²(r)", chartVarFoot: "σ²(r) Formel.",
+    chartEnvTitle: "🌊 Einhüllende E[X_r] ± 2σ", chartEnvFoot: "Max. Unsicherheit bei r*.",
+    diagScore: "Punktzahl / 100", gaugeFricTitle: "REIBUNGSNIVEAU", gaugeFric2Title: "REIBUNGSANZEIGE", gaugeVolTitle: "GESAMTVERSCHLECHTERUNG",
+    zoneLow: "0–24 NIEDRIG", zoneMid: "25–49 MODERAT", zoneHigh: "50–74 HOCH", zoneCrit: "75–100 KRITISCH",
+    diagRiskTitle: "⚠️ Detailanalyse", diagRemedyTitle: "🛠️ Maßnahmen",
+    infoFatalTitle: "🔴 Warum E < P fatal ist (Korollar 4.2)", infoFatalBody: "Wenn E ≥ P, dann P(R > 0) = 0.",
+    fricScoreLabel: "Reibung / 100", fricInterpTitle: "💬 Interpretation", fricRemedyTitle: "🛠️ Maßnahmen",
+    infoFricTitle: "🟠 Warum unvollständige Akten Reibung erzeugen (§7)", infoFricBody: "Auch wenn K ≥ P, erzeugen unvollständige Akten Lücken.",
+    tableCompareTitle: "📋 Naiv vs exakt", thAlpha: "Ziel-α", thNaive: "Naives w", thExact: "Exaktes w*", thRatio: "Verhältnis", thRiskNaive: "Risiko bei naivem w",
+    tableHolesTitle: "🕳️ Lücken pro Kandidat", thRank: "Rang", thStatus: "Status", thHolesAbove: "Lücken darüber", thNewRank: "Neuer Rang", thGain: "Gratis-Schritte",
+    tableInitTitle: "🔹 Ursprungsliste", thInitRank: "Rang", thInitName: "Name", thInitScore: "Punktzahl", thInitStatus: "Status",
+    tableFinalTitle: "🔸 Endgültige Liste", thFinalNewRank: "Verkündeter Rang", thFinalName: "Name", thFinalScore: "Punktzahl", thFinalGain: "Gratis-Schritte",
+    legendTitle: "📖 Legende", legendInputTitle: "🔹 Eingaben", legendDerivedTitle: "🔸 Abgeleitet", legendDecisionsTitle: "🟡 Entscheidungen",
+    verdictNonfeas: "NICHT DURCHFÜHRBAR", verdictCritical: "KRITISCH", verdictAlarm: "ALARM", verdictHigh: "HOHE SPANNUNG", verdictModerate: "MODERAT", verdictRobust: "ROBUST",
+    verdictFeasHighFric: "MACHBAR, HOHE REIBUNG", verdictFeasModFric: "MACHBAR — MODERAT", verdictTensionHighFric: "SPANNUNG + REIBUNG",
+    stateLow: "✓ <strong>NIEDRIGE REIBUNG</strong>.",
+    stateMid: "🟡 <strong>MODERATE REIBUNG</strong>.",
+    stateHigh: "⚠️ <strong>HOHE REIBUNG</strong>.",
+    stateCrit: "🔥 <strong>KRITISCHE REIBUNG</strong>.",
+    vulgarHeader: "Einfach erklärt", vulgarDiagHeader: "Einfach erklärt", vulgarFricHeader: "Einfach erklärt — Reibung",
+    vulgShortlist: "Stufe 1: <span class='vulgar-num'>{m}</span> bestehen. Stufe 2: Nur vollständige Akten zählen. <span class='vulgar-num'>{K}</span> vollständig, <span class='vulgar-num'>{U}</span> unvollständig.",
+    vulgDistK: "Erwartet: <span class='vulgar-num'>{EK}</span>. Rot: <span class='vulgar-danger'>{pctRisk}%.</span>",
+    vulgCompare: "Rot = naiv (<span class='vulgar-num'>{wN}</span>). Blau = exakt (<span class='vulgar-num'>{wE}</span>). Verhältnis: <span class='vulgar-num'>{ratio}×</span>. Risiko: <span class='vulgar-danger'>{realRisk}%</span>.",
+    vulgSens: "E wächst → Risiko fällt. E = <span class='vulgar-num'>{E}</span>.",
+    vulgWStar: "α = 0,01 → <span class='vulgar-num'>{wE}</span>. α = 0,05 → <span class='vulgar-num'>{wE5}</span>.",
+    vulgVar: "Mittlere Ränge gewinnen am meisten.",
+    vulgEnv: "Mitte ≈ <span class='vulgar-num'>{meanMid}</span> ± <span class='vulgar-num'>{sdMid}</span>.",
+    vulgDiagSummary: "System: <strong>{verdict}</strong>. Vollständig: <span class='vulgar-num'>{EK}</span>. Stellen: <span class='vulgar-num'>{P}</span>. Marge: <span class='vulgar-num'>{margin}</span>. Risiko: <span class='vulgar-danger'>{pctRisk}%</span>.",
+    vulgFricSummary: "Unvollständigkeitsrate: <span class='vulgar-num'>{elimPct}%</span>. Pro Stelle <span class='vulgar-num'>{hpp}</span> Lücke(n).",
+    gainSummaryTitle: "Gratis-Schritte der Zugelassenen:",
+    gainSummaryMin: "min", gainSummaryAvg: "Ø", gainSummaryMax: "max",
+    gainSummaryTotal: "Zugelassen", gainSummaryWithGain: "mit mind. 1 Schritt",
+    badgeEligible: "Vollständig", badgeNonEligible: "Unvollständig", badgeMed: "★ Median", badgeRef: "Ref.",
+    tableEmpty: "Keine behaltenen Kandidaten.",
+    fricFactorElim: "Rate U/m", fricFactorH: "H(K)/log|supp|", fricFactorHpp: "Lücken/Stelle", fricFactorVar: "σ²(r*)",
+    fricMetricElim: "U/m", fricMetricH: "H(K)/log|supp|", fricMetricHpp: "Lücken/Stelle", fricMetricVar: "σ²(r*)",
+    toastCSV: "CSV exportiert", toastJSON: "JSON exportiert",
+    toastBarHidden: "Titel & Stats ausgeblendet (H zum Wiederherstellen)",
+    pedagoFeasible: "Begleiter zu <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025).",
+    pedagoHalf: "📐 <strong>Halbzeit-Defizit:</strong> E[K] ≈ P — siehe §6.",
+    pedagoOmega: "🎲 <strong>Noncentral-Modus (ω = {omega}):</strong> siehe §10.",
+    pedagoInfeasible: "🚨 <strong>E &lt; P:</strong> Korollar 4.2 — kein w genügt.",
+    pedagoEq41: "Gl. (4.1)"
+  },
+  es: {
+    title: "Dimensionamiento de lista", sub: "— compañero de Hajji-Fakir (2025)",
+    presetArticle: "📄 Artículo", presetSmall: "🧪 Pequeño (§5)", presetTight: "⚡ Ajustado", presetFriction: "🟠 Fricción", presetNCHG: "🎲 Correlado (ω≠1)", presetInfeasible: "🚨 Inviable (E<P)",
+    btnDraw: "🎲 Sortear", btnRecompute: "🔄 Recalcular", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
+    btnHideBar: "⬆ Ocultar", btnShowBar: "⬇ Mostrar",
+    paramNameN: "Solicitudes", paramNameM: "Aprobados", paramNameP: "Puestos", paramNameE: "Expedientes válidos", paramNameAlpha: "Riesgo objetivo", paramNameOmega: "Odds ratio (§10)", paramNameSeed: "Semilla",
+    paramTipN: "N — Solicitudes (§2.1)", paramTipM: "m — Aprobados (§2.1)", paramTipP: "P — Puestos (§2.1)",
+    paramTipE: "E — Expedientes completos (§2.1)", paramTipAlpha: "α — Riesgo máximo (§3)",
+    paramTipOmega: "ω — Odds ratio mérito–elegibilidad (§10).", paramTipSeed: "Semilla determinista",
+    feasTxt: "VIABLE", nonfeasTxt: "NO VIABLE", fricLabel: "FRICCIÓN",
+    lvlOK: "OK", lvlTight: "AJUSTADO", lvlModerate: "MODERADO", lvlCritical: "CRÍTICO",
+    fricLow: "BAJO", fricModerate: "MODERADO", fricHigh: "ALTO", fricCritical: "CRÍTICO",
+    badgeComplete: "Completo", badgeIncomplete: "Incompleto",
+    tabShortlist: "🎯 Lista", tabSizing: "📊 Dimensionamiento", tabTranslation: "🔄 Traducción", tabDiagnostic: "🩺 Diagnóstico", tabFriction: "🔥 Fricción", tabTables: "📋 Tablas", tabLegend: "📖 Leyenda",
+    shortlistTitle: "👁️ Visualización",
+    shortlistStep1: "1. Lista inicial", shortlistStep2: "2. Verificación",
+    shortlistStep3: "3. Tras retirada", shortlistStep4: "4. Admisión final",
+    legEligible: "Completo", legNonEligible: "Incompleto", legHole: "Hueco", legEmpty: "Vacío", legThreshold: "Umbral P",
+    legGain: "Pasos gratis",
+    chartDistTitle: "📊 Distribución de K", chartDistFoot: "Rojo: K < P.",
+    chartCompareTitle: "📉 Ingenuo vs exacto", chartCompareFoot: "Azul: exacto. Rojo: ingenuo.",
+    chartSensTitle: "🌡️ Sensibilidad E", chartSensFoot: "P(K < P) vs E.",
+    chartWStarTitle: "🎯 w* vs α", chartWStarFoot: "Lista mínima.",
+    chartVarTitle: "📈 Varianza σ²(r)", chartVarFoot: "Fórmula σ²(r).",
+    chartEnvTitle: "🌊 Envolvente E[X_r] ± 2σ", chartEnvFoot: "Máx. incertidumbre en r*.",
+    diagScore: "Puntuación / 100", gaugeFricTitle: "NIVEL DE FRICCIÓN", gaugeFric2Title: "MEDIDOR", gaugeVolTitle: "DEGRADACIÓN GLOBAL",
+    zoneLow: "0–24 BAJO", zoneMid: "25–49 MODERADO", zoneHigh: "50–74 ALTO", zoneCrit: "75–100 CRÍTICO",
+    diagRiskTitle: "⚠️ Análisis", diagRemedyTitle: "🛠️ Remedios",
+    infoFatalTitle: "🔴 Por qué E < P es fatal (Cor. 4.2)", infoFatalBody: "Si E ≥ P, P(R > 0) = 0.",
+    fricScoreLabel: "Fricción / 100", fricInterpTitle: "💬 Interpretación", fricRemedyTitle: "🛠️ Remedios",
+    infoFricTitle: "🟠 Fricción por expedientes incompletos (§7)", infoFricBody: "Los U = m − K incompletos crean huecos.",
+    tableCompareTitle: "📋 Ingenuo vs exacto", thAlpha: "α", thNaive: "w ingenuo", thExact: "w* exacto", thRatio: "Ratio", thRiskNaive: "Riesgo",
+    tableHolesTitle: "🕳️ Huecos", thRank: "Rango", thStatus: "Estado", thHolesAbove: "Huecos arriba", thNewRank: "Nuevo rango", thGain: "Pasos",
+    tableInitTitle: "🔹 Lista inicial", thInitRank: "Rango", thInitName: "Nombre", thInitScore: "Nota", thInitStatus: "Estado",
+    tableFinalTitle: "🔸 Lista final", thFinalNewRank: "Rango", thFinalName: "Nombre", thFinalScore: "Nota", thFinalGain: "Pasos",
+    legendTitle: "📖 Leyenda", legendInputTitle: "🔹 Parámetros", legendDerivedTitle: "🔸 Derivadas", legendDecisionsTitle: "🟡 Decisiones",
+    verdictNonfeas: "NO VIABLE", verdictCritical: "SISTEMA CRÍTICO", verdictAlarm: "ALARMA", verdictHigh: "TENSIÓN ALTA", verdictModerate: "MODERADA", verdictRobust: "ROBUSTO",
+    verdictFeasHighFric: "VIABLE, FRICCIÓN ALTA", verdictFeasModFric: "VIABLE — MODERADA", verdictTensionHighFric: "TENSIÓN + FRICCIÓN",
+    stateLow: "✓ <strong>FRICCIÓN BAJA</strong>.",
+    stateMid: "🟡 <strong>FRICCIÓN MODERADA</strong>.",
+    stateHigh: "⚠️ <strong>FRICCIÓN ALTA</strong>.",
+    stateCrit: "🔥 <strong>FRICCIÓN CRÍTICA</strong>.",
+    vulgarHeader: "En palabras simples", vulgarDiagHeader: "En palabras simples", vulgarFricHeader: "En palabras simples — fricción",
+    vulgShortlist: "Etapa 1: <span class='vulgar-num'>{m}</span>. Etapa 2: <span class='vulgar-num'>{K}</span> completos, <span class='vulgar-num'>{U}</span> incompletos.",
+    vulgDistK: "Típico: <span class='vulgar-num'>{EK}</span>. Rojo: <span class='vulgar-danger'>{pctRisk}%.</span>",
+    vulgCompare: "Rojo = ingenuo (<span class='vulgar-num'>{wN}</span>). Azul = exacto (<span class='vulgar-num'>{wE}</span>). Ratio: <span class='vulgar-num'>{ratio}×</span>. Riesgo: <span class='vulgar-danger'>{realRisk}%</span>.",
+    vulgSens: "E actual = <span class='vulgar-num'>{E}</span>.",
+    vulgWStar: "α = 0,01 → <span class='vulgar-num'>{wE}</span>. α = 0,05 → <span class='vulgar-num'>{wE5}</span>.",
+    vulgVar: "Los rangos medios ganan más.",
+    vulgEnv: "Medio ≈ <span class='vulgar-num'>{meanMid}</span> ± <span class='vulgar-num'>{sdMid}</span>.",
+    vulgDiagSummary: "Sistema: <strong>{verdict}</strong>. Completos: <span class='vulgar-num'>{EK}</span>. Puestos: <span class='vulgar-num'>{P}</span>. Riesgo: <span class='vulgar-danger'>{pctRisk}%</span>.",
+    vulgFricSummary: "Tasa incompletos: <span class='vulgar-num'>{elimPct}%</span>. Por puesto <span class='vulgar-num'>{hpp}</span> hueco(s).",
+    gainSummaryTitle: "Pasos gratis:",
+    gainSummaryMin: "mín", gainSummaryAvg: "med", gainSummaryMax: "máx",
+    gainSummaryTotal: "Admitidos", gainSummaryWithGain: "con ≥1 paso",
+    badgeEligible: "Completo", badgeNonEligible: "Incompleto", badgeMed: "★ Mediano", badgeRef: "ref",
+    tableEmpty: "Sin candidatos.",
+    fricFactorElim: "U/m", fricFactorH: "H(K)/log|supp|", fricFactorHpp: "Huecos/puesto", fricFactorVar: "σ²(r*)",
+    fricMetricElim: "U/m", fricMetricH: "H/log", fricMetricHpp: "Huecos/puesto", fricMetricVar: "σ²(r*)",
+    toastCSV: "CSV exportado", toastJSON: "JSON exportado",
+    toastBarHidden: "Oculto (H para restaurar)",
+    pedagoFeasible: "Compañero de <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025).",
+    pedagoHalf: "📐 <strong>Mitad de sesiones con déficit:</strong> E[K] ≈ P — §6.",
+    pedagoOmega: "🎲 <strong>Modo no central (ω = {omega}):</strong> §10.",
+    pedagoInfeasible: "🚨 <strong>E &lt; P:</strong> Cor. 4.2 — ningún w cumple.",
+    pedagoEq41: "Ec. (4.1)"
+  },
+  ar: {
+    title: "تحديد حجم قائمة الانتظار", sub: "— مرافق لـ Hajji-Fakir (2025)",
+    presetArticle: "📄 المقال", presetSmall: "🧪 صغير (§5)", presetTight: "⚡ ضيق", presetFriction: "🟠 احتكاك", presetNCHG: "🎲 مرتبط (ω≠1)", presetInfeasible: "🚨 غير ممكن (E<P)",
+    btnDraw: "🎲 سحب", btnRecompute: "🔄 إعادة حساب", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
+    btnHideBar: "⬆ إخفاء", btnShowBar: "⬇ إظهار",
+    paramNameN: "الطلبات", paramNameM: "الناجحون", paramNameP: "المناصب", paramNameE: "الملفات الكاملة", paramNameAlpha: "المخاطر المستهدفة", paramNameOmega: "نسبة الأرجحية (§10)", paramNameSeed: "البذرة",
+    paramTipN: "N — الطلبات (§2.1)", paramTipM: "m — الناجحون (§2.1)", paramTipP: "P — المناصب (§2.1)",
+    paramTipE: "E — الملفات الكاملة (§2.1)", paramTipAlpha: "α — المخاطر القصوى (§3)",
+    paramTipOmega: "ω — نسبة أرجحية الاستحقاق–الأهلية (§10).", paramTipSeed: "بذرة ثابتة",
+    feasTxt: "ممكن", nonfeasTxt: "غير ممكن", fricLabel: "الاحتكاك",
+    lvlOK: "جيد", lvlTight: "ضيق", lvlModerate: "متوسط", lvlCritical: "حرج",
+    fricLow: "منخفض", fricModerate: "متوسط", fricHigh: "مرتفع", fricCritical: "حرج",
+    badgeComplete: "كامل", badgeIncomplete: "ناقص",
+    tabShortlist: "🎯 القائمة", tabSizing: "📊 التحديد", tabTranslation: "🔄 الترجمة", tabDiagnostic: "🩺 التشخيص", tabFriction: "🔥 الاحتكاك", tabTables: "📋 الجداول", tabLegend: "📖 الدليل",
+    shortlistTitle: "👁️ تصور القائمة",
+    shortlistStep1: "1. القائمة الأولية", shortlistStep2: "2. فحص الملفات",
+    shortlistStep3: "3. بعد الإزالة", shortlistStep4: "4. القبول النهائي",
+    legEligible: "كامل", legNonEligible: "ناقص", legHole: "فراغ", legEmpty: "فارغ", legThreshold: "عتبة P",
+    legGain: "رتب مجانية",
+    chartDistTitle: "📊 توزيع K", chartDistFoot: "أحمر: K < P.",
+    chartCompareTitle: "📉 المخاطر", chartCompareFoot: "أزرق: دقيق. أحمر: ساذج.",
+    chartSensTitle: "🌡️ الحساسية E", chartSensFoot: "P(K < P) vs E.",
+    chartWStarTitle: "🎯 w* vs α", chartWStarFoot: "الحد الأدنى.",
+    chartVarTitle: "📈 التباين σ²(r)", chartVarFoot: "صيغة σ²(r).",
+    chartEnvTitle: "🌊 الغلاف E[X_r] ± 2σ", chartEnvFoot: "أقصى عدم يقين.",
+    diagScore: "النقاط / 100", gaugeFricTitle: "مستوى الاحتكاك", gaugeFric2Title: "مقياس الاحتكاك", gaugeVolTitle: "التدهور الكلي",
+    zoneLow: "0–24 منخفض", zoneMid: "25–49 متوسط", zoneHigh: "50–74 مرتفع", zoneCrit: "75–100 حرج",
+    diagRiskTitle: "⚠️ تحليل مفصل", diagRemedyTitle: "🛠️ العلاجات",
+    infoFatalTitle: "🔴 لماذا E < P قاتل (النتيجة 4.2)", infoFatalBody: "إذا E ≥ P فإن P(R > 0) = 0.",
+    fricScoreLabel: "الاحتكاك / 100", fricInterpTitle: "💬 التفسير", fricRemedyTitle: "🛠️ العلاجات",
+    infoFricTitle: "🟠 الاحتكاك من الملفات الناقصة (§7)", infoFricBody: "حتى عندما K ≥ P، U = m − K يخلق فراغات.",
+    tableCompareTitle: "📋 الساذج مقابل الدقيق", thAlpha: "α", thNaive: "w ساذج", thExact: "w* دقيق", thRatio: "النسبة", thRiskNaive: "المخاطر",
+    tableHolesTitle: "🕳️ الفراغات", thRank: "الرتبة", thStatus: "الحالة", thHolesAbove: "فراغات أعلاه", thNewRank: "الرتبة الجديدة", thGain: "الرتب",
+    tableInitTitle: "🔹 القائمة الأولية", thInitRank: "الرتبة", thInitName: "الاسم", thInitScore: "النتيجة", thInitStatus: "الحالة",
+    tableFinalTitle: "🔸 القائمة النهائية", thFinalNewRank: "الرتبة", thFinalName: "الاسم", thFinalScore: "النتيجة", thFinalGain: "الرتب",
+    legendTitle: "📖 الدليل", legendInputTitle: "🔹 الإدخال", legendDerivedTitle: "🔸 المشتقة", legendDecisionsTitle: "🟡 القرارات",
+    verdictNonfeas: "غير ممكن", verdictCritical: "حرج", verdictAlarm: "إنذار", verdictHigh: "توتر مرتفع", verdictModerate: "متوسط", verdictRobust: "قوي",
+    verdictFeasHighFric: "ممكن لكن احتكاك مرتفع", verdictFeasModFric: "ممكن — احتكاك متوسط", verdictTensionHighFric: "توتر + احتكاك",
+    stateLow: "✓ <strong>احتكاك منخفض</strong>.",
+    stateMid: "🟡 <strong>احتكاك متوسط</strong>.",
+    stateHigh: "⚠️ <strong>احتكاك مرتفع</strong>.",
+    stateCrit: "🔥 <strong>احتكاك حرج</strong>.",
+    vulgarHeader: "بعبارات بسيطة", vulgarDiagHeader: "بعبارات بسيطة", vulgarFricHeader: "بعبارات بسيطة — الاحتكاك",
+    vulgShortlist: "المرحلة 1: <span class='vulgar-num'>{m}</span>. المرحلة 2: <span class='vulgar-num'>{K}</span> كامل، <span class='vulgar-num'>{U}</span> ناقص.",
+    vulgDistK: "النموذجي: <span class='vulgar-num'>{EK}</span>. أحمر: <span class='vulgar-danger'>{pctRisk}%.</span>",
+    vulgCompare: "أحمر = ساذج (<span class='vulgar-num'>{wN}</span>). أزرق = دقيق (<span class='vulgar-num'>{wE}</span>). النسبة: <span class='vulgar-num'>{ratio}×</span>. المخاطر: <span class='vulgar-danger'>{realRisk}%</span>.",
+    vulgSens: "E الحالي = <span class='vulgar-num'>{E}</span>.",
+    vulgWStar: "α = 0.01 → <span class='vulgar-num'>{wE}</span>. α = 0.05 → <span class='vulgar-num'>{wE5}</span>.",
+    vulgVar: "المرشحون في المنتصف يكسبون أكثر.",
+    vulgEnv: "الوسط ≈ <span class='vulgar-num'>{meanMid}</span> ± <span class='vulgar-num'>{sdMid}</span>.",
+    vulgDiagSummary: "النظام: <strong>{verdict}</strong>. الكاملة: <span class='vulgar-num'>{EK}</span>. المناصب: <span class='vulgar-num'>{P}</span>. المخاطر: <span class='vulgar-danger'>{pctRisk}%</span>.",
+    vulgFricSummary: "معدل الناقص: <span class='vulgar-num'>{elimPct}%</span>. لكل منصب <span class='vulgar-num'>{hpp}</span> فراغ.",
+    gainSummaryTitle: "الرتب المجانية:",
+    gainSummaryMin: "الأدنى", gainSummaryAvg: "المتوسط", gainSummaryMax: "الأقصى",
+    gainSummaryTotal: "المقبولون", gainSummaryWithGain: "بخطوة واحدة على الأقل",
+    badgeEligible: "كامل", badgeNonEligible: "ناقص", badgeMed: "★ متوسط", badgeRef: "مرجع",
+    tableEmpty: "لا يوجد.",
+    fricFactorElim: "U/m", fricFactorH: "H(K)/log|supp|", fricFactorHpp: "فراغات/منصب", fricFactorVar: "σ²(r*)",
+    fricMetricElim: "U/m", fricMetricH: "H/log", fricMetricHpp: "فراغات/منصب", fricMetricVar: "σ²(r*)",
+    toastCSV: "تم تصدير CSV", toastJSON: "تم تصدير JSON",
+    toastBarHidden: "مخفي (H للاستعادة)",
+    pedagoFeasible: "مرافق لـ <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025).",
+    pedagoHalf: "📐 <strong>نصف الجلسات بعجز:</strong> E[K] ≈ P — §6.",
+    pedagoOmega: "🎲 <strong>الوضع غير المركزي (ω = {omega}):</strong> §10.",
+    pedagoInfeasible: "🚨 <strong>E &lt; P:</strong> النتيجة 4.2 — لا يوجد w.",
+    pedagoEq41: "المعادلة (4.1)"
+  },
+  he: {
+    title: "תמחור רשימת המתנה", sub: "— מלווה ל-Hajji-Fakir (2025)",
+    presetArticle: "📄 מאמר", presetSmall: "🧪 קטן (§5)", presetTight: "⚡ צמוד", presetFriction: "🟠 חיכוך", presetNCHG: "🎲 מתואם (ω≠1)", presetInfeasible: "🚨 בלתי אפשרי (E<P)",
+    btnDraw: "🎲 הגרלה", btnRecompute: "🔄 חשב מחדש", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
+    btnHideBar: "⬆ הסתר", btnShowBar: "⬇ הצג",
+    paramNameN: "בקשות", paramNameM: "עברו בחינה", paramNameP: "משרות", paramNameE: "תיקים תקינים", paramNameAlpha: "סיכון יעד", paramNameOmega: "יחס סיכויים (§10)", paramNameSeed: "זרע",
+    paramTipN: "N — בקשות (§2.1)", paramTipM: "m — עברו (§2.1)", paramTipP: "P — משרות (§2.1)",
+    paramTipE: "E — תיקים תקינים (§2.1)", paramTipAlpha: "α — סיכון מקסימלי (§3)",
+    paramTipOmega: "ω — יחס סיכויים כשרון–זכאות (§10).", paramTipSeed: "זרע דטרמיניסטי",
+    feasTxt: "אפשרי", nonfeasTxt: "בלתי אפשרי", fricLabel: "חיכוך",
+    lvlOK: "תקין", lvlTight: "צמוד", lvlModerate: "בינוני", lvlCritical: "קריטי",
+    fricLow: "נמוך", fricModerate: "בינוני", fricHigh: "גבוה", fricCritical: "קריטי",
+    badgeComplete: "תקין", badgeIncomplete: "חסר",
+    tabShortlist: "🎯 רשימה", tabSizing: "📊 תמחור", tabTranslation: "🔄 תרגום", tabDiagnostic: "🩺 אבחון", tabFriction: "🔥 חיכוך", tabTables: "📋 טבלאות", tabLegend: "📖 מקרא",
+    shortlistTitle: "👁️ הצגת הרשימה",
+    shortlistStep1: "1. רשימה ראשונית", shortlistStep2: "2. בדיקת תיקים",
+    shortlistStep3: "3. לאחר הסרה", shortlistStep4: "4. קבלה סופית",
+    legEligible: "תקין", legNonEligible: "חסר", legHole: "חור", legEmpty: "ריק", legThreshold: "סף P",
+    legGain: "צעדים חינם",
+    chartDistTitle: "📊 התפלגות K", chartDistFoot: "אדום: K < P.",
+    chartCompareTitle: "📉 סיכון", chartCompareFoot: "כחול: מדויק. אדום: נאיבי.",
+    chartSensTitle: "🌡️ רגישות E", chartSensFoot: "P(K < P) vs E.",
+    chartWStarTitle: "🎯 w* vs α", chartWStarFoot: "רשימה מינימלית.",
+    chartVarTitle: "📈 שונות σ²(r)", chartVarFoot: "נוסחת σ²(r).",
+    chartEnvTitle: "🌊 מעטפת E[X_r] ± 2σ", chartEnvFoot: "אי-ודאות מקסימלית.",
+    diagScore: "ניקוד / 100", gaugeFricTitle: "רמת חיכוך", gaugeFric2Title: "מחוג חיכוך", gaugeVolTitle: "שחיקה כוללת",
+    zoneLow: "0–24 נמוך", zoneMid: "25–49 בינוני", zoneHigh: "50–74 גבוה", zoneCrit: "75–100 קריטי",
+    diagRiskTitle: "⚠️ ניתוח מפורט", diagRemedyTitle: "🛠️ תיקונים",
+    infoFatalTitle: "🔴 מדוע E < P קטלני (מסקנה 4.2)", infoFatalBody: "אם E ≥ P, אז P(R > 0) = 0.",
+    fricScoreLabel: "חיכוך / 100", fricInterpTitle: "💬 פרשנות", fricRemedyTitle: "🛠️ תיקונים",
+    infoFricTitle: "🟠 חיכוך מתיקים חסרים (§7)", infoFricBody: "גם כאשר K ≥ P, U = m − K יוצר חורים.",
+    tableCompareTitle: "📋 נאיבי vs מדויק", thAlpha: "α", thNaive: "w נאיבי", thExact: "w* מדויק", thRatio: "יחס", thRiskNaive: "סיכון",
+    tableHolesTitle: "🕳️ חורים", thRank: "דירוג", thStatus: "מצב", thHolesAbove: "חורים מעל", thNewRank: "דירוג חדש", thGain: "צעדים",
+    tableInitTitle: "🔹 רשימה ראשונית", thInitRank: "דירוג", thInitName: "שם", thInitScore: "ניקוד", thInitStatus: "מצב",
+    tableFinalTitle: "🔸 רשימה סופית", thFinalNewRank: "דירוג", thFinalName: "שם", thFinalScore: "ניקוד", thFinalGain: "צעדים",
+    legendTitle: "📖 מקרא", legendInputTitle: "🔹 קלט", legendDerivedTitle: "🔸 נגזר", legendDecisionsTitle: "🟡 החלטות",
+    verdictNonfeas: "בלתי אפשרי", verdictCritical: "קריטי", verdictAlarm: "אזעקה", verdictHigh: "מתיחות גבוהה", verdictModerate: "בינוני", verdictRobust: "איתן",
+    verdictFeasHighFric: "אפשרי, חיכוך גבוה", verdictFeasModFric: "אפשרי — בינוני", verdictTensionHighFric: "מתיחות + חיכוך",
+    stateLow: "✓ <strong>חיכוך נמוך</strong>.",
+    stateMid: "🟡 <strong>חיכוך בינוני</strong>.",
+    stateHigh: "⚠️ <strong>חיכוך גבוה</strong>.",
+    stateCrit: "🔥 <strong>חיכוך קריטי</strong>.",
+    vulgarHeader: "במילים פשוטות", vulgarDiagHeader: "במילים פשוטות", vulgarFricHeader: "במילים פשוטות — חיכוך",
+    vulgShortlist: "שלב 1: <span class='vulgar-num'>{m}</span>. שלב 2: <span class='vulgar-num'>{K}</span> תקינים, <span class='vulgar-num'>{U}</span> חסרים.",
+    vulgDistK: "טיפוסי: <span class='vulgar-num'>{EK}</span>. אדום: <span class='vulgar-danger'>{pctRisk}%.</span>",
+    vulgCompare: "אדום = נאיבי (<span class='vulgar-num'>{wN}</span>). כחול = מדויק (<span class='vulgar-num'>{wE}</span>). יחס: <span class='vulgar-num'>{ratio}×</span>. סיכון: <span class='vulgar-danger'>{realRisk}%</span>.",
+    vulgSens: "E נוכחי = <span class='vulgar-num'>{E}</span>.",
+    vulgWStar: "α = 0.01 → <span class='vulgar-num'>{wE}</span>. α = 0.05 → <span class='vulgar-num'>{wE5}</span>.",
+    vulgVar: "המועמדים במרכז מרוויחים.",
+    vulgEnv: "מרכז ≈ <span class='vulgar-num'>{meanMid}</span> ± <span class='vulgar-num'>{sdMid}</span>.",
+    vulgDiagSummary: "מערכת: <strong>{verdict}</strong>. תקינים: <span class='vulgar-num'>{EK}</span>. משרות: <span class='vulgar-num'>{P}</span>. סיכון: <span class='vulgar-danger'>{pctRisk}%</span>.",
+    vulgFricSummary: "שיעור חסרים: <span class='vulgar-num'>{elimPct}%</span>. לכל משרה <span class='vulgar-num'>{hpp}</span> חור.",
+    gainSummaryTitle: "צעדים חינם:",
+    gainSummaryMin: "מינ", gainSummaryAvg: "ממוצע", gainSummaryMax: "מקס",
+    gainSummaryTotal: "התקבלו", gainSummaryWithGain: "עם לפחות צעד אחד",
+    badgeEligible: "תקין", badgeNonEligible: "חסר", badgeMed: "★ חציון", badgeRef: "הפנייה",
+    tableEmpty: "אין מועמדים.",
+    fricFactorElim: "U/m", fricFactorH: "H(K)/log|supp|", fricFactorHpp: "חורים/משרה", fricFactorVar: "σ²(r*)",
+    fricMetricElim: "U/m", fricMetricH: "H/log", fricMetricHpp: "חורים/משרה", fricMetricVar: "σ²(r*)",
+    toastCSV: "CSV יוצא", toastJSON: "JSON יוצא",
+    toastBarHidden: "מוסתר (H לשחזור)",
+    pedagoFeasible: "מלווה ל-<em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025).",
+    pedagoHalf: "📐 <strong>חצי מהמפגשים בגירעון:</strong> E[K] ≈ P — §6.",
+    pedagoOmega: "🎲 <strong>מצב לא-מרכזי (ω = {omega}):</strong> §10.",
+    pedagoInfeasible: "🚨 <strong>E &lt; P:</strong> מסקנה 4.2.",
+    pedagoEq41: "משוואה (4.1)"
+  }
+};
+
+const LANG_META = {
+  en: { flag: '🇬🇧', code: 'EN' }, fr: { flag: '🇫🇷', code: 'FR' },
+  de: { flag: '🇩🇪', code: 'DE' }, es: { flag: '🇪🇸', code: 'ES' },
+  ar: { flag: '🇸🇦', code: 'AR' }, he: { flag: '🇮🇱', code: 'HE' }
+};
+
+let currentLang = 'en';
+function t(key, params) {
+  let s = (I18N[currentLang] && I18N[currentLang][key]) || (I18N.en[key]) || key;
+  if (params) for (const k of Object.keys(params)) s = s.split('{' + k + '}').join(params[k]);
+  return s;
+}
+
+/* ============================================================
+   NUMERICAL CORE
+   ============================================================ */
+function logGamma(z) {
+  if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z);
+  z -= 1;
+  const x = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  let y = z + 1, g = x[0];
+  for (let i = 1; i < x.length; i++) g += x[i] / (z + i);
+  return Math.log(2 * Math.PI) / 2 + (z + 0.5) * Math.log(y) - y + Math.log(g);
+}
+function logComb(n, k) { if (k < 0 || k > n) return -Infinity; return logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1); }
+function logSumExp(arr) {
+  if (arr.length === 0) return -Infinity;
+  let mx = -Infinity;
+  for (const x of arr) if (x > mx) mx = x;
+  if (!isFinite(mx)) return -Infinity;
+  let s = 0;
+  for (const x of arr) s += Math.exp(x - mx);
+  return mx + Math.log(s);
+}
+
+function hypergeomPMF(k, N, E, m) {
+  if (k < 0 || k > E || k > m || (m - k) > (N - E) || (m - k) < 0) return 0;
+  return Math.exp(logComb(E, k) + logComb(N - E, m - k) - logComb(N, m));
+}
+function hypergeomCDF(k, N, E, m) {
+  if (k < 0) return 0;
+  let s = 0;
+  const kMax = Math.min(k, E, m);
+  for (let i = 0; i <= kMax; i++) s += hypergeomPMF(i, N, E, m);
+  return Math.min(s, 1);
+}
+
+/* Noncentral hypergeometric (Fisher) — §10 */
+function nchgPMF(k, N, E, m, omega) {
+  if (!isFinite(omega) || omega <= 0 || Math.abs(omega - 1) < 1e-12) return hypergeomPMF(k, N, E, m);
+  const jmin = Math.max(0, m - (N - E));
+  const jmax = Math.min(E, m);
+  if (k < jmin || k > jmax) return 0;
+  const logOmega = Math.log(omega);
+  const logTerms = [];
+  for (let j = jmin; j <= jmax; j++) {
+    logTerms.push(logComb(E, j) + logComb(N - E, m - j) + j * logOmega);
+  }
+  const logZ = logSumExp(logTerms);
+  return Math.exp(logComb(E, k) + logComb(N - E, m - k) + k * logOmega - logZ);
+}
+function pmfK(k, N, E, m, omega) {
+  if (omega == null || Math.abs(omega - 1) < 1e-12) return hypergeomPMF(k, N, E, m);
+  return nchgPMF(k, N, E, m, omega);
+}
+function cdfK(k, N, E, m, omega) {
+  if (k < 0) return 0;
+  const { jmin, jmax } = kSupport(N, E, m);
+  const kMax = Math.min(k, jmax);
+  let s = 0;
+  for (let i = jmin; i <= kMax; i++) s += pmfK(i, N, E, m, omega);
+  return Math.min(s, 1);
+}
+
+function kSupport(N, E, m) { return { jmin: Math.max(0, m - (N - E)), jmax: Math.min(E, m) }; }
+
+function deficitRisk(N, E, m, P, omega = 1) { return cdfK(P - 1, N, E, m, omega); }
+function naiveRisk(w, N, E, m, P, omega = 1) { return cdfK(P - w - 1, N, E, m, omega); }
+function expectedDeficit(N, E, m, P, omega = 1) {
+  let s = 0;
+  const { jmin, jmax } = kSupport(N, E, m);
+  const kTop = Math.min(P, jmax + 1);
+  for (let k = jmin; k < kTop; k++) s += (P - k) * pmfK(k, N, E, m, omega);
+  return s;
+}
+function exactRisk(w, N, E, m, P, omega = 1) {
+  const { jmin, jmax } = kSupport(N, E, m);
+  const kUp = Math.min(P - 1, jmax);
+  let s = 0;
+  for (let k = jmin; k <= kUp; k++) {
+    const pk = pmfK(k, N, E, m, omega);
+    if (pk < 1e-300) continue;
+    /* Conditional law of K_w | k is UNCHANGED by omega (§10). */
+    s += pk * hypergeomCDF(P - k - 1, N - m, E - k, w);
+  }
+  return Math.min(s, 1);
+}
+function naiveW(alpha, N, E, m, P, omega = 1) {
+  for (let w = 0; w <= N - m; w++) if (naiveRisk(w, N, E, m, P, omega) <= alpha) return w;
+  return N - m;
+}
+function exactW(alpha, N, E, m, P, omega = 1) {
+  if (E < P) return null;
+  if (exactRisk(0, N, E, m, P, omega) <= alpha) return 0;
+  let lo = 0, hi = N - m;
+  if (exactRisk(hi, N, E, m, P, omega) > alpha) return null;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (exactRisk(mid, N, E, m, P, omega) <= alpha) hi = mid; else lo = mid;
+  }
+  return hi;
+}
+function varianceTranslation(r, m, U) {
+  if (m <= 2) return 0;
+  const pU = U / (m - 1);
+  return Math.max((r - 1) * pU * (1 - pU) * (m - r) / (m - 2), 0);
+}
+function meanTranslation(r, p) { return (r - 1) * (1 - p); }
+function entropyK(N, E, m, omega = 1) {
+  let H = 0;
+  const { jmin, jmax } = kSupport(N, E, m);
+  for (let k = jmin; k <= jmax; k++) {
+    const pk = pmfK(k, N, E, m, omega);
+    if (pk > 1e-12) H -= pk * Math.log(pk);
+  }
+  return H;
+}
+
+function computeFriction(N, m, P, E, p, U, HK) {
+  const elimRate = m > 0 ? U / m : 0;
+  const expectedU = m * (1 - p);
+  const holesPerPost = P > 0 ? expectedU / P : 0;
+  const kmin = Math.max(0, m - N + E), kmax = Math.min(E, m);
+  const supportSize = Math.max(kmax - kmin + 1, 2);
+  const Hmax = Math.log(supportSize);
+  const Hnorm = Hmax > 0 ? Math.min(1, HK / Hmax) : 0;
+  const rStar = (m + 1) / 2;
+  const varMedian = varianceTranslation(rStar, m, expectedU);
+  const varMaxPossible = (m > 2) ? ((m - 1) * (m - 1) / 4) * 0.25 / (m - 2) : 1;
+  const varNorm = varMaxPossible > 0 ? Math.min(1, varMedian / varMaxPossible) : 0;
+  const f_elim = Math.min(1, (1 - p) / 0.5);
+  const f_holes = Math.min(1, holesPerPost / 1.0);
+  const f_H = Hnorm;
+  const f_varCapped = Math.min(1, varNorm * 4);
+  const score = Math.round(100 * (0.35 * f_elim + 0.25 * f_H + 0.20 * f_holes + 0.20 * f_varCapped));
+  let level, icon, cssClass;
+  if (score >= 75) { level = t("fricCritical"); icon = '🔥'; cssClass = 'crit'; }
+  else if (score >= 50) { level = t("fricHigh"); icon = '⚠️'; cssClass = 'high'; }
+  else if (score >= 25) { level = t("fricModerate"); icon = '🟡'; cssClass = 'mid'; }
+  else { level = t("fricLow"); icon = '✓'; cssClass = 'low'; }
+  return { score, level, icon, cssClass, elimRate, expectedU, holesPerPost, Hnorm, varMedian, varNorm, f_elim, f_H, f_holes, f_varCapped };
+}
+function colorForScore(score) {
+  if (score >= 75) return { main: '#ff2a2a', start: '#f2a365', end: '#ff2a2a', zoneName: t("fricCritical"), zoneBg: '#7a0a0a', zoneFg: '#ffcccc', cssClass: 'crit' };
+  if (score >= 50) return { main: '#f2a365', start: '#ffd700', end: '#f2a365', zoneName: t("fricHigh"), zoneBg: '#5a3a1a', zoneFg: '#ffd0a0', cssClass: 'high' };
+  if (score >= 25) return { main: '#ffd700', start: '#6fcf97', end: '#ffd700', zoneName: t("fricModerate"), zoneBg: '#4a3a1a', zoneFg: '#ffd700', cssClass: 'mid' };
+  return { main: '#6fcf97', start: '#6fcf97', end: '#6fcf97', zoneName: t("fricLow"), zoneBg: '#0f3a1f', zoneFg: '#b0e0b0', cssClass: 'low' };
+}
+
+const GAUGE_IDS = {
+  fric: { num: 'fricGaugeNum', zone: 'fricGaugeZone', fill: 'fricFill', peak: 'fricPeak', card: 'fricGaugeCard', segments: 'fricSegments', zoneLabels: 'fricZoneLabels', ticks: 'fricTicks', stateMsg: 'fricStateMsg' },
+  fric2: { num: 'fricGaugeNum2', zone: 'fricGaugeZone2', fill: 'fricFill2', peak: 'fricPeak2', card: 'fricGaugeCard2', segments: 'fricSegments2', zoneLabels: 'fricZoneLabels2', ticks: 'fricTicks2', stateMsg: 'fricStateMsg2' },
+  vol: { num: 'volBigNum', zone: 'volZoneLabel', fill: 'volFill', peak: 'volPeak', card: 'volumeWidget', segments: 'volSegments', zoneLabels: null, ticks: null, stateMsg: null }
+};
+
+let charts = {};
+let current = {};
+let shortlist = [];
+let conserves = [];
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const name = btn.dataset.tab;
+    if (!name) return;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === name));
+    setTimeout(() => { Object.values(charts).forEach(c => { try { c.resize(); } catch (e) {} }); }, 40);
+  });
+});
+
+/* ============================================================
+   LANGUAGE DROPDOWN
+   ============================================================ */
+function positionLangMenu() {
+  const menu = document.getElementById('langMenu');
+  const btn = document.getElementById('langSelectBtn');
+  if (!menu || !btn) return;
+  const rect = btn.getBoundingClientRect();
+  menu.style.top = (rect.bottom + 6) + 'px';
+  if (document.body.classList.contains('rtl')) { menu.style.left = rect.left + 'px'; menu.style.right = 'auto'; }
+  else { menu.style.right = (window.innerWidth - rect.right) + 'px'; menu.style.left = 'auto'; }
+}
+function toggleLangMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('langMenu');
+  const btn = document.getElementById('langSelectBtn');
+  if (!menu || !btn) return;
+  const willOpen = !menu.classList.contains('open');
+  if (willOpen) positionLangMenu();
+  menu.classList.toggle('open', willOpen);
+  btn.classList.toggle('open', willOpen);
+}
+function pickLang(lang) {
+  setLanguage(lang);
+  document.getElementById('langMenu').classList.remove('open');
+  document.getElementById('langSelectBtn').classList.remove('open');
+}
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('langMenu');
+  const btn = document.getElementById('langSelectBtn');
+  if (!menu || !btn) return;
+  if (!menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.remove('open');
+    btn.classList.remove('open');
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.getElementById('langMenu')?.classList.remove('open');
+    document.getElementById('langSelectBtn')?.classList.remove('open');
+  }
+});
+window.addEventListener('scroll', () => {
+  const menu = document.getElementById('langMenu');
+  if (menu && menu.classList.contains('open')) positionLangMenu();
+}, { passive: true });
+window.addEventListener('resize', () => {
+  const menu = document.getElementById('langMenu');
+  if (menu && menu.classList.contains('open')) positionLangMenu();
+});
+
+/* ============================================================
+   SPIN BUTTONS
+   ============================================================ */
+window.__spinActive = false;
+function spinParam(inputId, direction) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const stepStr = input.step || '1';
+  const step = parseFloat(stepStr) || 1;
+  const min = input.min !== '' ? parseFloat(input.min) : -Infinity;
+  const max = input.max !== '' ? parseFloat(input.max) : Infinity;
+  let val = parseFloat(input.value) || 0;
+  val += direction * step;
+  if (val < min) val = min;
+  if (val > max) val = max;
+  const decimals = stepStr.includes('.') ? stepStr.split('.')[1].length : 0;
+  input.value = decimals > 0 ? val.toFixed(decimals) : String(Math.round(val));
+  const ctrl = input.closest('.param-control');
+  if (ctrl) { ctrl.classList.remove('spin-flash'); void ctrl.offsetWidth; ctrl.classList.add('spin-flash'); }
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+document.querySelectorAll('.spin-btn').forEach(btn => {
+  const target = btn.dataset.target;
+  const dir = parseInt(btn.dataset.dir, 10) || 0;
+  if (!target || !dir) return;
+  let holdTimeout = null;
+  let repeatInterval = null;
+  const doSpin = () => spinParam(target, dir);
+  const startHold = (e) => {
+    e.preventDefault();
+    window.__spinActive = true;
+    doSpin();
+    holdTimeout = setTimeout(() => { repeatInterval = setInterval(doSpin, 90); }, 400);
+  };
+  const stopHold = () => {
+    window.__spinActive = false;
+    if (holdTimeout) { clearTimeout(holdTimeout); holdTimeout = null; }
+    if (repeatInterval) { clearInterval(repeatInterval); repeatInterval = null; }
+  };
+  btn.addEventListener('pointerdown', startHold);
+  btn.addEventListener('pointerup', stopHold);
+  btn.addEventListener('pointerleave', stopHold);
+  btn.addEventListener('pointercancel', stopHold);
+  btn.addEventListener('mousedown', (e) => e.preventDefault());
+});
+
+/* ============================================================
+   BAR TOGGLE
+   ============================================================ */
+let barHidden = false;
+function toggleBar() {
+  barHidden = !barHidden;
+  document.body.classList.toggle('bar-hidden', barHidden);
+  const btn = document.getElementById('btnToggleBar');
+  if (btn) { btn.textContent = barHidden ? t('btnShowBar') : t('btnHideBar'); btn.title = (barHidden ? t('btnShowBar') : t('btnHideBar')) + ' (H)'; }
+  setTimeout(() => { Object.values(charts).forEach(c => { try { c.resize(); } catch (e) {} }); }, 60);
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'h' && e.key !== 'H') return;
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  e.preventDefault();
+  toggleBar();
+});
+
+/* ============================================================
+   PRESETS — aligned with the article
+   ============================================================ */
+function loadPreset(name) {
+  const presets = {
+    /* §6 — main numerical illustration */
+    article:       { N: 743, m: 296, P: 146, E: 366, alpha: 0.01, omega: 1.0, seed: 42 },
+    /* §5 — small blackboard anchor (40,6,3,15) */
+    small:         { N:  40, m:   6, P:   3, E:  15, alpha: 0.10, omega: 1.0, seed:  7 },
+    /* tight but feasible */
+    tight:         { N: 500, m: 120, P:  60, E:  65, alpha: 0.01, omega: 1.0, seed:  3 },
+    /* friction demo: high U/m but feasible */
+    highfriction:  { N: 500, m: 200, P:  50, E: 350, alpha: 0.01, omega: 1.0, seed:  8 },
+    /* §10 — correlated merit (ω = 0.8: negative correlation) */
+    nchg:          { N: 743, m: 296, P: 146, E: 366, alpha: 0.01, omega: 0.8, seed: 11 },
+    /* E < P: infeasible */
+    infeasible:    { N: 800, m: 200, P: 150, E: 120, alpha: 0.01, omega: 1.0, seed:  5 }
+  };
+  const p = presets[name]; if (!p) return;
+  document.getElementById('inN').value = p.N;
+  document.getElementById('inM').value = p.m;
+  document.getElementById('inP').value = p.P;
+  document.getElementById('inE').value = p.E;
+  document.getElementById('inAlpha').value = p.alpha;
+  document.getElementById('inOmega').value = p.omega;
+  document.getElementById('inSeed').value = p.seed;
+  drawShortlist();
+}
+
+function showToast(msg, kind) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind === 'danger' ? ' danger' : kind === 'fric' || kind === 'warn' ? ' fric' : '');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.classList.add('show'), 10);
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2200);
+}
+
+function enforceConstraints() {
+  const inN = document.getElementById('inN'), inM = document.getElementById('inM'), inP = document.getElementById('inP'), inE = document.getElementById('inE');
+  let N = parseInt(inN.value), m = parseInt(inM.value), P = parseInt(inP.value), E = parseInt(inE.value);
+  ['pillN', 'pillM', 'pillP', 'pillE'].forEach(id => document.getElementById(id).classList.remove('violation'));
+  const errors = [];
+  if (isNaN(N) || N < 10) { N = 10; inN.value = N; }
+  if (isNaN(m) || m < 1) { m = 1; inM.value = m; }
+  if (m > N) { document.getElementById('pillM').classList.add('violation'); errors.push('m > N'); m = N; inM.value = m; }
+  if (isNaN(P) || P < 1) { P = 1; inP.value = P; }
+  if (P > m) { document.getElementById('pillP').classList.add('violation'); errors.push('P > m'); P = m; inP.value = P; }
+  if (isNaN(E) || E < 0) { E = 0; inE.value = E; }
+  if (E > N) { document.getElementById('pillE').classList.add('violation'); errors.push('E > N'); E = N; inE.value = E; }
+  if (errors.length > 0) {
+    showToast('⚠️ ' + errors.join(' | '), 'warn');
+    setTimeout(() => { ['pillM', 'pillP', 'pillE'].forEach(id => document.getElementById(id).classList.remove('violation')); }, 1200);
+  }
+}
+
+function drawShortlist() {
+  enforceConstraints();
+  const N = parseInt(document.getElementById('inN').value);
+  const m = parseInt(document.getElementById('inM').value);
+  const P = parseInt(document.getElementById('inP').value);
+  const E = parseInt(document.getElementById('inE').value);
+  const seed = parseInt(document.getElementById('inSeed').value);
+  const omega = parseFloat(document.getElementById('inOmega').value) || 1;
+  if (m > N || P > m || E > N) return;
+  function rng(s) { let x = s; return () => { x = (x * 9301 + 49297) % 233280; return x / 233280; }; }
+  const rand = rng(seed);
+  const eligibleIdx = new Set();
+  let attempts = 0;
+  while (eligibleIdx.size < E && attempts < N * 20) { eligibleIdx.add(Math.floor(rand() * N)); attempts++; }
+  /* Weighted sampling of the shortlist to reflect merit–eligibility correlation (§10).
+     ω > 1 makes eligible candidates more likely to reach the shortlist,
+     ω < 1 makes them less likely. When ω = 1, this collapses to uniform sampling. */
+  const shortlistIdx = new Set();
+  attempts = 0;
+  const eligibleArr = Array.from(eligibleIdx);
+  const nonEligibleArr = [];
+  for (let i = 0; i < N; i++) if (!eligibleIdx.has(i)) nonEligibleArr.push(i);
+  while (shortlistIdx.size < m && attempts < N * 30) {
+    const pool = Math.abs(omega - 1) < 1e-9
+      ? Array.from({ length: N }, (_, i) => i)
+      : (rand() < omega / (1 + omega) ? eligibleArr : nonEligibleArr);
+    if (pool.length === 0) { attempts++; continue; }
+    const pick = pool[Math.floor(rand() * pool.length)];
+    shortlistIdx.add(pick);
+    attempts++;
+  }
+  shortlist = [];
+  shortlistIdx.forEach(idx => shortlist.push({ idx, merit: rand(), eligible: eligibleIdx.has(idx) }));
+  shortlist.sort((a, b) => b.merit - a.merit);
+  const K = shortlist.filter(c => c.eligible).length;
+  const U = m - K;
+  let holes = 0;
+  shortlist.forEach((c, i) => {
+    c.rank = i + 1;
+    c.nom = `Cand.${String(c.rank).padStart(4, '0')}`;
+    c.note = Math.round((10 - 5 * (i / Math.max(m - 1, 1)) + rand() * 0.5) * 10) / 10;
+    c.var = varianceTranslation(c.rank, m, U);
+    c.holesAbove = holes;
+    if (c.eligible) { c.newRank = c.rank - holes; c.gain = holes; }
+    else { c.newRank = null; c.gain = 0; holes++; }
+  });
+  conserves = shortlist.filter(c => c.eligible).map(c => ({ ...c }));
+  current.shortlist = shortlist; current.conserves = conserves; current.K = K; current.U = U; current.omega = omega;
+  renderShortlistVisualization();
+  renderHolesTable();
+  renderTranslationTables();
+  computeAll();
+}
+
+function renderShortlistVisualization() {
+  const m = parseInt(document.getElementById('inM').value);
+  const P = parseInt(document.getElementById('inP').value);
+  const rowInit = document.getElementById('rowInitial');
+  const rowVerif = document.getElementById('rowAfterVerif');
+  const rowCompact = document.getElementById('rowCompacted');
+  const rowFinal = document.getElementById('rowFinal');
+  const rowGain = document.getElementById('rowGain');
+  rowInit.innerHTML = ''; rowVerif.innerHTML = ''; rowCompact.innerHTML = ''; rowFinal.innerHTML = ''; rowGain.innerHTML = '';
+  const maxDisplay = 130; const displayM = Math.min(m, maxDisplay); const truncated = m > maxDisplay; const stride = truncated ? m / maxDisplay : 1;
+
+  for (let i = 0; i < displayM; i++) {
+    const realIdx = truncated ? Math.floor(i * stride) : i;
+    const c = shortlist[realIdx]; if (!c) continue;
+
+    if (realIdx === P) {
+      const marker = document.createElement('div'); marker.className = 'threshold-marker';
+      rowInit.appendChild(marker.cloneNode());
+      rowVerif.appendChild(marker.cloneNode());
+      rowCompact.appendChild(marker.cloneNode());
+      rowFinal.appendChild(marker.cloneNode());
+      const gm = document.createElement('div'); gm.className = 'threshold-marker'; gm.style.height = '30px';
+      rowGain.appendChild(gm);
+    }
+
+    const s1 = document.createElement('div'); s1.className = 'slot elig';
+    s1.style.background = 'linear-gradient(180deg, #3a4a6a, #2a3a5a)'; s1.style.borderColor = '#5a7aaa';
+    s1.textContent = realIdx + 1; if (realIdx === P - 1) s1.classList.add('threshold');
+    rowInit.appendChild(s1);
+
+    const s2 = document.createElement('div'); s2.className = 'slot ' + (c.eligible ? 'elig' : 'elim'); s2.textContent = realIdx + 1;
+    if (realIdx === P - 1) s2.classList.add('threshold');
+    rowVerif.appendChild(s2);
+
+    const s3 = document.createElement('div');
+    if (c.eligible) { s3.className = 'slot elig'; s3.textContent = c.newRank; }
+    else { s3.className = 'slot hole'; s3.textContent = '·'; }
+    rowCompact.appendChild(s3);
+
+    if (c.eligible && c.newRank <= P) {
+      const s4 = document.createElement('div'); s4.className = 'slot elig';
+      s4.style.background = 'linear-gradient(180deg, #4a8a5a, #2a5a3a)';
+      s4.textContent = c.newRank;
+      s4.title = `Merit rank ${c.rank} → announced rank ${c.newRank} (gained ${c.gain} free steps)`;
+      rowFinal.appendChild(s4);
+
+      const g = document.createElement('div');
+      g.className = 'gain-cell';
+      if (c.gain === 0) g.classList.add('zero');
+      else if (c.gain >= 5) g.classList.add('high-gain');
+      else if (c.gain >= 1) g.classList.add('mid-gain');
+      g.textContent = c.gain > 0 ? '+' + c.gain : '0';
+      g.title = `Merit rank ${c.rank} → announced rank ${c.newRank} : ${c.gain} free step(s) gained`;
+      rowGain.appendChild(g);
+    } else if (realIdx < P) {
+      const s4 = document.createElement('div'); s4.className = 'slot empty'; rowFinal.appendChild(s4);
+      const g = document.createElement('div'); g.className = 'gain-cell zero'; g.textContent = '·'; g.title = 'Not admitted'; rowGain.appendChild(g);
+    }
+  }
+
+  const K = current.K; const deficits = Math.max(0, P - K);
+  const b = document.createElement('div');
+  if (deficits > 0) { b.className = 'deficit-bracket'; b.textContent = `← deficit = ${deficits}`; }
+  else { b.className = 'gain-bracket'; b.textContent = `← K = ${K} ≥ P, no deficit`; }
+  rowFinal.appendChild(b);
+
+  const admitted = conserves.filter(c => c.newRank <= P);
+  const gs = document.getElementById('gainSummary');
+  if (admitted.length > 0) {
+    const gains = admitted.map(c => c.gain);
+    const sum = gains.reduce((a, b) => a + b, 0);
+    const avg = sum / gains.length;
+    const maxGain = Math.max(...gains);
+    const minGain = Math.min(...gains);
+    const withGain = gains.filter(x => x > 0).length;
+    gs.innerHTML = `<span class="gs-label">${t('gainSummaryTitle')}</span>
+      ${t('gainSummaryMin')} <b>${minGain}</b> · ${t('gainSummaryAvg')} <b>${avg.toFixed(1)}</b> · ${t('gainSummaryMax')} <b>${maxGain}</b>  —  ${t('gainSummaryTotal')}: <b>${admitted.length}</b> · ${t('gainSummaryWithGain')}: <b>${withGain}</b>`;
+  } else { gs.innerHTML = ''; }
+}
+
+function renderHolesTable() {
+  const P = parseInt(document.getElementById('inP').value);
+  const m = parseInt(document.getElementById('inM').value);
+  const tbody = document.getElementById('tbHoles');
+  let html = '';
+  const limit = Math.min(m, P + 15);
+  shortlist.slice(0, limit).forEach(c => {
+    const cls = !c.eligible ? 'hole-row' : '';
+    const badge = c.eligible ? `<span class="badge badge-elig">${t("badgeEligible")}</span>` : `<span class="badge badge-elim">${t("badgeNonEligible")}</span>`;
+    const gainTag = c.eligible && c.gain > 0 ? `<span class="gain-tag">+${c.gain}</span>` : (c.eligible ? '0' : '—');
+    html += `<tr class="${cls}"><td>${c.rank}</td><td>${badge}</td><td>${c.holesAbove}</td><td>${c.eligible ? c.newRank : '—'}</td><td>${gainTag}</td><td>${c.var.toFixed(3)}</td></tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+function renderTranslationTables() {
+  const m = parseInt(document.getElementById('inM').value);
+  const rStar = (m + 1) / 2;
+  const tbInit = document.getElementById('tbInit');
+  let h1 = '';
+  shortlist.forEach(c => {
+    const isMed = Math.abs(c.rank - rStar) <= 5 && c.eligible;
+    const cls = c.eligible ? 'conserve' : 'elimine';
+    const medCls = isMed ? ' median' : '';
+    const badge = c.eligible ? `<span class="badge badge-elig">${t("badgeEligible")}</span>` : `<span class="badge badge-elim">${t("badgeNonEligible")}</span>`;
+    const medBadge = isMed ? ` <span class="badge badge-median">${t("badgeMed")}</span>` : '';
+    h1 += `<tr class="${cls}${medCls}"><td>${c.rank}</td><td>${c.nom}</td><td>${c.note.toFixed(1)}</td><td>${badge}${medBadge}</td><td>${c.eligible ? c.gain : '—'}</td><td>${c.var.toFixed(3)}</td></tr>`;
+  });
+  tbInit.innerHTML = h1;
+  const sorted = [...conserves].sort((a, b) => a.newRank - b.newRank);
+  const tbFinal = document.getElementById('tbFinal');
+  let h2 = '';
+  sorted.forEach(c => {
+    const isMed = Math.abs(c.rank - rStar) <= 5;
+    const medCls = isMed ? ' median' : '';
+    const gainTag = c.gain > 0 ? `<span class="gain-tag">+${c.gain}</span>` : '0';
+    h2 += `<tr class="conserve${medCls}"><td>${c.newRank}</td><td>${c.nom}</td><td>${c.note.toFixed(1)}</td><td>${gainTag}</td><td>${c.var.toFixed(3)}</td></tr>`;
+  });
+  tbFinal.innerHTML = h2 || `<tr><td colspan="5" style="color:#7a8a9a;text-align:center;">${t("tableEmpty")}</td></tr>`;
+}
+
+function computeAll() {
+  enforceConstraints();
+  const N = parseInt(document.getElementById('inN').value);
+  const m = parseInt(document.getElementById('inM').value);
+  const P = parseInt(document.getElementById('inP').value);
+  const E = parseInt(document.getElementById('inE').value);
+  const alpha = parseFloat(document.getElementById('inAlpha').value);
+  const omega = parseFloat(document.getElementById('inOmega').value) || 1;
+  if (E < 0 || E > N || m > N || P > m) return;
+  const p = E / N;
+  /* E[K] and Var(K) under noncentral hypergeometric are not closed-form;
+     we report the hypergeometric moment as an approximation and flag ω ≠ 1. */
+  const muK = m * p;
+  const varK = m * p * (1 - p) * (N - m) / (N - 1);
+  const sigmaK = Math.sqrt(varK);
+  const defRisk = deficitRisk(N, E, m, P, omega);
+  const expDef = expectedDeficit(N, E, m, P, omega);
+  const wN = naiveW(alpha, N, E, m, P, omega);
+  const wE = exactW(alpha, N, E, m, P, omega);
+  const feasible = (E >= P);
+  const ratio = (wE !== null && wN > 0) ? (wE / wN) : (wE !== null ? '∞' : '—');
+  const EL = P * (1 - p);
+  const HK = entropyK(N, E, m, omega);
+  const rStar = (m + 1) / 2;
+  const pStar = P / m;
+  const U = current.U != null ? current.U : 0;
+  current = { ...current, N, m, P, E, alpha, omega, p, muK, sigmaK, defRisk, expDef, wN, wE, feasible, EL, HK, rStar, pStar, varK, U };
+  document.getElementById('stEK').textContent = muK.toFixed(2);
+  document.getElementById('stDeficitRisk').textContent = defRisk < 1e-4 ? '<1e-4' : defRisk.toFixed(4);
+  document.getElementById('stDeficit').textContent = expDef.toFixed(2);
+  document.getElementById('stNaive').textContent = wN;
+  document.getElementById('stExact').textContent = wE === null ? '—' : wE;
+  document.getElementById('stRatio').textContent = typeof ratio === 'number' ? ratio.toFixed(2) : ratio;
+  document.getElementById('stEL').textContent = EL.toFixed(1);
+  document.getElementById('stU').textContent = U;
+  document.getElementById('stElimRate').textContent = m > 0 ? (U / m).toFixed(3) : '—';
+  document.getElementById('stEntropy').textContent = HK.toFixed(2);
+  document.getElementById('stRstar').textContent = rStar.toFixed(1);
+  const fric = computeFriction(N, m, P, E, p, U, HK);
+  updateFeasBadge(feasible, E, P);
+  updateFricBadge(fric);
+  const diag = computeInefficiency(current, fric);
+  renderDiagnostic(diag, fric);
+  renderVolumeGauge(diag.score);
+  drawAllCharts();
+  updateVulgarization();
+  updatePedagogicalBanner();
+}
+
+function updatePedagogicalBanner() {
+  const c = current;
+  if (!c || !c.N) return;
+  const el = document.getElementById('pedagoText');
+  if (!el) return;
+  const lines = [t('pedagoFeasible')];
+  if (!c.feasible) lines.push(t('pedagoInfeasible'));
+  else if (Math.abs(c.muK - c.P) < c.sigmaK) lines.push(t('pedagoHalf', { EK: c.muK.toFixed(1), P: c.P }));
+  if (Math.abs(c.omega - 1) > 1e-9) lines.push(t('pedagoOmega', { omega: c.omega.toFixed(2) }));
+  el.innerHTML = lines.join(' &nbsp;·&nbsp; ');
+}
+
+function updateFeasBadge(feasible, E, P) {
+  const badge = document.getElementById('feasBadge');
+  const txtEl = document.getElementById('feasTxt');
+  const lvl = document.getElementById('feasLvl');
+  const header = document.getElementById('stickyHeader');
+  badge.classList.remove('ok', 'tight', 'warn', 'no', 'alarm-pulse', 'alarm-blink');
+  header.classList.remove('alarm-mode');
+  if (!feasible) {
+    badge.classList.add('no', 'alarm-pulse', 'alarm-blink');
+    header.classList.add('alarm-mode');
+    badge.querySelector('.icon').textContent = '🚨';
+    txtEl.textContent = t('nonfeasTxt');
+    lvl.textContent = t('lvlCritical');
+  } else {
+    const margin = (E - P) / Math.max(P, 1);
+    if (margin < 0.1) { badge.classList.add('warn'); badge.querySelector('.icon').textContent = '⚠️'; txtEl.textContent = t('feasTxt'); lvl.textContent = t('lvlTight'); }
+    else if (margin < 0.3) { badge.classList.add('tight'); badge.querySelector('.icon').textContent = '🟡'; txtEl.textContent = t('feasTxt'); lvl.textContent = t('lvlModerate'); }
+    else { badge.classList.add('ok'); badge.querySelector('.icon').textContent = '✅'; txtEl.textContent = t('feasTxt'); lvl.textContent = t('lvlOK'); }
+  }
+  /* ω indicator */
+  const omegaPill = document.getElementById('pillOmega');
+  if (omegaPill) omegaPill.classList.toggle('omega-active', Math.abs(current.omega - 1) > 1e-9);
+}
+
+function updateFricBadge(fric) {
+  const badge = document.getElementById('fricBadge');
+  const lvl = document.getElementById('fricLvl');
+  const icon = document.getElementById('fricBadgeIcon');
+  const num = document.getElementById('fricBadgeNum');
+  badge.classList.remove('low', 'mid', 'high', 'crit');
+  badge.classList.add(fric.cssClass);
+  icon.textContent = fric.icon;
+  lvl.textContent = fric.level;
+  num.textContent = fric.score;
+}
+
+function renderFrictionBarGeneric(score, prefix) {
+  const ids = GAUGE_IDS[prefix]; if (!ids) return;
+  const num = document.getElementById(ids.num);
+  const zone = document.getElementById(ids.zone);
+  const fill = document.getElementById(ids.fill);
+  const peak = document.getElementById(ids.peak);
+  const card = document.getElementById(ids.card);
+  const segsContainer = ids.segments ? document.getElementById(ids.segments) : null;
+  const zoneLabels = ids.zoneLabels ? document.getElementById(ids.zoneLabels) : null;
+  const ticksContainer = ids.ticks ? document.getElementById(ids.ticks) : null;
+  const stateMsg = ids.stateMsg ? document.getElementById(ids.stateMsg) : null;
+  if (!num || !fill || !peak || !card) return;
+  const c = colorForScore(score);
+  fill.style.width = score + '%';
+  fill.style.background = `linear-gradient(90deg, ${c.start} 0%, ${c.end} 100%)`;
+  peak.style.left = `calc(${score}% - 2px)`;
+  peak.style.background = c.main; peak.style.color = c.main;
+  num.textContent = score; num.style.color = c.main;
+  zone.textContent = c.zoneName; zone.style.background = c.zoneBg; zone.style.color = c.zoneFg;
+  card.classList.remove('low', 'mid', 'high', 'crit'); card.classList.add(c.cssClass);
+  if (segsContainer) {
+    const numSegs = 25;
+    if (segsContainer.children.length !== numSegs) {
+      segsContainer.innerHTML = '';
+      for (let i = 0; i < numSegs; i++) { const s = document.createElement('div'); s.className = 'seg'; segsContainer.appendChild(s); }
+    }
+    const activeCount = Math.round((score / 100) * numSegs);
+    const isCrit = score >= 75; const isHigh = score >= 50;
+    Array.from(segsContainer.children).forEach((seg, i) => {
+      seg.classList.remove('lit', 'active', 'crit', 'high');
+      const segPos = (i + 1) / numSegs * 100;
+      if (i < activeCount) { seg.classList.add('active'); if (isCrit) seg.classList.add('crit'); else if (isHigh) seg.classList.add('high'); }
+      else if (segPos <= score + 8) { seg.classList.add('lit'); }
+    });
+  }
+  if (ticksContainer && ticksContainer.children.length === 0) {
+    for (let i = 0; i <= 20; i++) { const el = document.createElement('div'); el.className = 'tick' + (i % 5 === 0 ? ' major' : ''); ticksContainer.appendChild(el); }
+  }
+  if (zoneLabels) {
+    Array.from(zoneLabels.children).forEach(z => z.classList.remove('current'));
+    const z = zoneLabels.querySelector(`[data-zone="${c.cssClass}"]`); if (z) z.classList.add('current');
+  }
+  if (stateMsg) {
+    let msg, cls;
+    if (score >= 75) { msg = t('stateCrit'); cls = 'crit'; }
+    else if (score >= 50) { msg = t('stateHigh'); cls = 'high'; }
+    else if (score >= 25) { msg = t('stateMid'); cls = 'mid'; }
+    else { msg = t('stateLow'); cls = 'low'; }
+    stateMsg.className = 'friction-state-msg ' + cls;
+    stateMsg.innerHTML = msg;
+  }
+}
+
+function renderFrictionGauges(fric) {
+  renderFrictionBarGeneric(fric.score, 'fric');
+  renderFrictionBarGeneric(fric.score, 'fric2');
+  const fg = document.getElementById('fricFactorsGrid');
+  if (fg) {
+    const factors = [
+      { label: t("fricFactorElim"), value: (fric.elimRate * 100).toFixed(1) + '%', level: fric.f_elim > 0.6 ? 'crit' : fric.f_elim > 0.4 ? 'high' : fric.f_elim > 0.2 ? 'mid' : 'low', pct: Math.round(fric.f_elim * 100) },
+      { label: t("fricFactorH"), value: fric.Hnorm.toFixed(2), level: fric.f_H > 0.7 ? 'crit' : fric.f_H > 0.4 ? 'high' : fric.f_H > 0.2 ? 'mid' : 'low', pct: Math.round(fric.f_H * 100) },
+      { label: t("fricFactorHpp"), value: fric.holesPerPost.toFixed(2), level: fric.f_holes > 0.6 ? 'crit' : fric.f_holes > 0.4 ? 'high' : fric.f_holes > 0.2 ? 'mid' : 'low', pct: Math.round(fric.f_holes * 100) },
+      { label: t("fricFactorVar"), value: fric.varMedian.toFixed(2), level: fric.f_varCapped > 0.6 ? 'crit' : fric.f_varCapped > 0.4 ? 'high' : fric.f_varCapped > 0.2 ? 'mid' : 'low', pct: Math.round(fric.f_varCapped * 100) }
+    ];
+    fg.innerHTML = factors.map(f => {
+      const color = f.level === 'crit' ? '#ff2a2a' : f.level === 'high' ? '#f2a365' : f.level === 'mid' ? '#ffd700' : '#6fcf97';
+      return `<div class="friction-factor ${f.level}"><div class="ff-label">${f.label}</div><div class="ff-value">${f.value}</div><div class="ff-bar"><div class="ff-bar-fill" style="width:${f.pct}%; background:${color};"></div></div></div>`;
+    }).join('');
+  }
+}
+function renderVolumeGauge(score) { renderFrictionBarGeneric(score, 'vol'); }
+
+function computeInefficiency(c, fric) {
+  const { N, m, P, E, p, wN, wE, defRisk, EL, alpha, feasible } = c;
+  if (!feasible) return { level: 'CRITICAL', score: 100, verdict: t("verdictNonfeas"), icon: '🚨', cssClass: 'no', alarm: true, sub: `E = ${E} < P = ${P}` };
+  const f_collapse = Math.min(1, defRisk);
+  const ratioNaive = (wE !== null && wN > 0) ? (wE / wN) : 1;
+  const f_naive = Math.min(1, Math.max(0, (ratioNaive - 1) / 1.0));
+  const f_loss = Math.min(1, EL / Math.max(P, 1));
+  const margin = (E - P) / Math.max(P, 1);
+  const f_margin = margin >= 0.5 ? 0 : Math.max(0, 1 - margin / 0.5);
+  const classicScore = 100 * (0.30 * f_collapse + 0.25 * f_naive + 0.20 * f_loss + 0.25 * f_margin);
+  const score = Math.round(0.75 * classicScore + 0.25 * fric.score);
+  let level, icon, cssClass, verdict;
+  if (score >= 75) { level = 'CRITICAL'; icon = '🚨'; cssClass = 'no'; verdict = t("verdictCritical"); }
+  else if (score >= 50) { level = 'ALARM'; icon = '⚠️'; cssClass = 'warn'; verdict = t("verdictAlarm"); }
+  else if (score >= 25) { level = 'HIGH'; icon = '🟠'; cssClass = 'tight'; verdict = t("verdictHigh"); }
+  else if (score >= 12) { level = 'MODERATE'; icon = '🟡'; cssClass = 'tight'; verdict = t("verdictModerate"); }
+  else { level = 'LOW'; icon = '✅'; cssClass = 'ok'; verdict = t("verdictRobust"); }
+  if (level === 'LOW' && fric.score >= 50) { verdict = t("verdictFeasHighFric"); icon = '🔥'; cssClass = 'tight'; }
+  else if (level === 'LOW' && fric.score >= 25) { verdict = t("verdictFeasModFric"); icon = '🟡'; cssClass = 'tight'; }
+  else if (level === 'MODERATE' && fric.score >= 50) { verdict = t("verdictTensionHighFric"); icon = '⚠️'; cssClass = 'warn'; }
+  const alarm = score >= 50;
+  return { level, score, verdict, icon, cssClass, alarm, sub: `Score: ${score}/100` };
+}
+
+function renderDiagnostic(d, fric) {
+  const feasBox = document.getElementById('diagFeasBox');
+  const fricBox = document.getElementById('diagFricBox');
+  feasBox.className = 'mini-verdict ' + (d.level === 'CRITICAL' ? 'no' : 'ok');
+  document.getElementById('diagFeasIcon').textContent = d.level === 'CRITICAL' ? '🚨' : '✅';
+  document.getElementById('diagFeasTitle').textContent = d.level === 'CRITICAL' ? t("nonfeasTxt") : t("feasTxt");
+  document.getElementById('diagFeasSub').textContent = `E = ${current.E} ≥ P = ${current.P} (Cor. 4.2)`;
+  fricBox.className = 'mini-verdict ' + (fric.cssClass === 'crit' ? 'no' : fric.cssClass === 'high' ? 'warn' : fric.cssClass === 'mid' ? 'tight' : 'ok');
+  document.getElementById('diagFricIcon').textContent = fric.icon;
+  document.getElementById('diagFricTitle').textContent = t("fricLabel") + ' ' + fric.level;
+  document.getElementById('diagFricSub').textContent = `Score ${fric.score}/100 (heuristic)`;
+  const verdict = document.getElementById('diagVerdict');
+  verdict.className = 'diag-verdict ' + d.cssClass + (d.alarm ? ' alarm-pulse' : '');
+  document.getElementById('diagIcon').textContent = d.icon;
+  document.getElementById('diagTitle').textContent = d.verdict;
+  document.getElementById('diagSub').textContent = d.sub;
+  document.getElementById('diagScore').textContent = d.score;
+  renderFrictionGauges(fric);
+  renderFrictionTab(fric);
+}
+
+function renderFrictionTab(fric) {
+  const v = document.getElementById('fricVerdict');
+  v.className = 'diag-verdict ' + fric.cssClass + (fric.score >= 50 ? ' alarm-pulse' : '');
+  document.getElementById('fricIcon').textContent = fric.icon;
+  document.getElementById('fricTitle').textContent = t("fricLabel") + ' ' + fric.level;
+  document.getElementById('fricSub').textContent = `Score ${fric.score}/100 (heuristic)`;
+  document.getElementById('fricScore').textContent = fric.score;
+  const grid = document.getElementById('fricMetricGrid');
+  const metrics = [
+    { label: t("fricMetricElim"), value: (fric.elimRate * 100).toFixed(1) + '%', level: fric.f_elim > 0.6 ? 'crit' : fric.f_elim > 0.4 ? 'high' : fric.f_elim > 0.2 ? 'mid' : 'low', pct: Math.round(fric.f_elim * 100) },
+    { label: t("fricMetricH"), value: fric.Hnorm.toFixed(2), level: fric.f_H > 0.7 ? 'crit' : fric.f_H > 0.4 ? 'high' : fric.f_H > 0.2 ? 'mid' : 'low', pct: Math.round(fric.f_H * 100) },
+    { label: t("fricMetricHpp"), value: fric.holesPerPost.toFixed(2), level: fric.f_holes > 0.6 ? 'crit' : fric.f_holes > 0.4 ? 'high' : fric.f_holes > 0.2 ? 'mid' : 'low', pct: Math.round(fric.f_holes * 100) },
+    { label: t("fricMetricVar"), value: fric.varMedian.toFixed(2), level: fric.f_varCapped > 0.6 ? 'crit' : fric.f_varCapped > 0.4 ? 'high' : fric.f_varCapped > 0.2 ? 'mid' : 'low', pct: Math.round(fric.f_varCapped * 100) }
+  ];
+  grid.innerHTML = metrics.map(m => {
+    const color = m.level === 'crit' ? '#ff2a2a' : m.level === 'high' ? '#f2a365' : m.level === 'mid' ? '#ffd700' : '#6fcf97';
+    return `<div class="fric-metric ${m.level}"><div class="fm-label">${m.label}</div><div class="fm-value">${m.value}</div><div class="fm-bar"><div class="fm-bar-fill" style="width:${m.pct}%; background:${color};"></div></div></div>`;
+  }).join('');
+}
+
+function updateVulgarization() {
+  const c = current;
+  if (!c.N) return;
+  const N = c.N, m = c.m, P = c.P, E = c.E, alpha = c.alpha;
+  const K = c.U != null ? (m - c.U) : 0;
+  const U = c.U || 0;
+  const wN = c.wN;
+  const wE = c.wE === null ? '—' : c.wE;
+  const ratio = (wE !== null && wN > 0) ? (wE / wN).toFixed(2) : '—';
+  const pctRisk = (c.defRisk * 100).toFixed(2);
+  const realRisk = (c.wN > 0 ? (exactRisk(c.wN, N, E, m, P, c.omega) * 100).toFixed(2) : '—');
+  const alphaPct = (alpha * 100).toFixed(2);
+  const wE5 = exactW(0.05, N, E, m, P, c.omega);
+  const wE5Str = wE5 === null ? '—' : wE5;
+  const rStar = c.rStar;
+  const meanMid = meanTranslation(rStar, c.p).toFixed(1);
+  const varMid = varianceTranslation(rStar, m, U);
+  const sdMid = Math.sqrt(varMid).toFixed(1);
+  const elimPct = (U / m * 100).toFixed(1);
+  const hpp = (m * (1 - c.p) / Math.max(P, 1)).toFixed(2);
+  const marginStr = (E - P).toString();
+  let verdictStr = '—';
+  const diagEl = document.getElementById('diagTitle');
+  if (diagEl) verdictStr = diagEl.textContent;
+
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  const setT = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+
+  setT('vulgarShortlistTitle', t('vulgarHeader'));
+  setT('vulgarDistKTitle', t('vulgarHeader'));
+  setT('vulgarCompareTitle', t('vulgarHeader'));
+  setT('vulgarSensTitle', t('vulgarHeader'));
+  setT('vulgarWStarTitle', t('vulgarHeader'));
+  setT('vulgarVarTitle', t('vulgarHeader'));
+  setT('vulgarEnvTitle', t('vulgarHeader'));
+  setT('vulgarDiagSummaryTitle', t('vulgarDiagHeader'));
+  setT('vulgarFricSummaryTitle', t('vulgarFricHeader'));
+
+  set('vulgarShortlistText', t('vulgShortlist', { N, m, P, E, EK: c.muK.toFixed(1), K, U }));
+  set('vulgarDistKText', t('vulgDistK', { N, m, P, E, EK: c.muK.toFixed(1), pctRisk }));
+  set('vulgarCompareText', t('vulgCompare', { wN, wE, alpha: alphaPct, ratio, realRisk }));
+  set('vulgarSensText', t('vulgSens', { E }));
+  set('vulgarWStarText', t('vulgWStar', { wE, wE5: wE5Str }));
+  set('vulgarVarText', t('vulgVar', { rStar: rStar.toFixed(0) }));
+  set('vulgarEnvText', t('vulgEnv', { meanMid, sdMid }));
+  set('vulgarDiagSummaryText', t('vulgDiagSummary', { verdict: verdictStr, m, EK: c.muK.toFixed(1), P, margin: marginStr, pctRisk, wN, wE, alpha: alphaPct }));
+  set('vulgarFricSummaryText', t('vulgFricSummary', { elimPct, hpp, P }));
+
+  const setBoxClass = (id, cls) => { const el = document.getElementById(id); if (el) el.className = 'vulgar-box ' + cls; };
+  setBoxClass('vulgarDistK', c.defRisk > 0.5 ? 'crit' : c.defRisk > 0.15 ? 'warn' : 'ok');
+  setBoxClass('vulgarCompare', (wE !== null && wN > 0 && wE / wN > 1.5) ? 'crit' : 'warn');
+  setBoxClass('vulgarDiagSummary', c.feasible ? (c.defRisk > 0.5 ? 'crit' : c.defRisk > 0.15 ? 'warn' : 'ok') : 'crit');
+  setBoxClass('vulgarFricSummary', (U / m) > 0.4 ? 'warn' : 'ok');
+}
+
+const chartOpts = {
+  responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+  plugins: { legend: { labels: { color: '#b0c4de', font: { size: 9 }, boxWidth: 10, padding: 4 } } },
+  scales: { x: { grid: { color: '#2a3a5a' }, ticks: { color: '#b0c4de', font: { size: 8 } } }, y: { grid: { color: '#2a3a5a' }, ticks: { color: '#b0c4de', font: { size: 8 } } } }
+};
+function drawAllCharts() {
+  if (!current.N) return;
+  drawDistK(current.N, current.E, current.m, current.P, current.omega);
+  drawCompare(current.N, current.E, current.m, current.P, current.alpha, current.wN, current.wE, current.omega);
+  drawSensitivity(current.N, current.m, current.P, current.E, current.omega);
+  drawWStar(current.N, current.E, current.m, current.P, current.alpha, current.omega);
+  drawVar(current.N, current.m, current.U);
+  drawEnvelope(current.N, current.m, current.p, current.U);
+  fillCompareTable(current.N, current.E, current.m, current.P, current.omega);
+}
+function drawDistK(N, E, m, P, omega) {
+  const { jmin, jmax } = kSupport(N, E, m);
+  const mu = m * E / N;
+  const sd = Math.sqrt(m * (E / N) * (1 - E / N) * (N - m) / (N - 1)) || 1;
+  const lo = Math.max(jmin, Math.floor(mu - 4 * sd));
+  const hi = Math.min(jmax, Math.ceil(mu + 4 * sd));
+  const ks = [], pks = [];
+  for (let k = lo; k <= hi; k++) { ks.push(k); pks.push(pmfK(k, N, E, m, omega)); }
+  if (charts.dist) charts.dist.destroy();
+  charts.dist = new Chart(document.getElementById('chDistK'), {
+    type: 'bar',
+    data: { labels: ks, datasets: [{ label: 'P(K = k)', data: pks,
+      backgroundColor: ks.map(k => k < P ? 'rgba(255,107,107,0.75)' : 'rgba(74,125,181,0.8)'),
+      borderColor: ks.map(k => k < P ? '#ff6b6b' : '#6a9dd5'), borderWidth: 1 }] },
+    options: { ...chartOpts, plugins: { ...chartOpts.plugins, legend: { display: false } } }
+  });
+}
+function drawCompare(N, E, m, P, alpha, wN, wE, omega) {
+  const wMax = Math.min(N - m, Math.max(60, (wE || 50) + 20));
+  const ws = [], naive = [], exact = [];
+  for (let w = 0; w <= wMax; w++) { ws.push(w); naive.push(naiveRisk(w, N, E, m, P, omega)); exact.push(exactRisk(w, N, E, m, P, omega)); }
+  if (charts.compare) charts.compare.destroy();
+  charts.compare = new Chart(document.getElementById('chCompare'), {
+    type: 'line',
+    data: { labels: ws, datasets: [
+      { label: 'Exact P(R_w > 0)  [Eq. 4.1]', data: exact, borderColor: '#4dabf7', backgroundColor: 'rgba(77,171,247,0.10)', borderWidth: 2, pointRadius: 0, tension: 0.15, fill: true },
+      { label: 'Naive P(Δ > w)  [§3]', data: naive, borderColor: '#ff6b6b', borderWidth: 1.6, pointRadius: 0, tension: 0.15, borderDash: [6, 4] },
+      { label: 'Target α', data: ws.map(() => alpha), borderColor: '#ffd700', borderWidth: 1.2, pointRadius: 0, borderDash: [3, 3] }
+    ] },
+    options: { ...chartOpts }
+  });
+}
+function drawSensitivity(N, m, P, Ecurrent, omega) {
+  const Es = [], risks = [];
+  const step = Math.max(1, Math.round(N / 180));
+  for (let E = 0; E <= N; E += step) { Es.push(E); risks.push(deficitRisk(N, E, m, P, omega)); }
+  if (charts.sens) charts.sens.destroy();
+  charts.sens = new Chart(document.getElementById('chSensitivity'), {
+    type: 'line',
+    data: { labels: Es, datasets: [{ label: 'P(K < P)', data: risks, borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.10)', borderWidth: 2, pointRadius: 0, tension: 0.2, fill: true }] },
+    options: { ...chartOpts, plugins: { ...chartOpts.plugins, legend: { display: false } } }
+  });
+}
+function drawWStar(N, E, m, P, alphaCur, omega) {
+  const alphas = [], wNaives = [], wExacts = [];
+  for (let a = 0.005; a <= 0.20; a += 0.005) {
+    alphas.push(a); wNaives.push(naiveW(a, N, E, m, P, omega));
+    const we = exactW(a, N, E, m, P, omega); wExacts.push(we === null ? null : we);
+  }
+  if (charts.wstar) charts.wstar.destroy();
+  charts.wstar = new Chart(document.getElementById('chWStar'), {
+    type: 'line',
+    data: { labels: alphas.map(a => a.toFixed(3)), datasets: [
+      { label: 'Naive w  [§3]', data: wNaives, borderColor: '#ff6b6b', borderWidth: 1.6, pointRadius: 0, tension: 0.15, borderDash: [5, 4] },
+      { label: 'Exact w*  [Eq. 4.1]', data: wExacts, borderColor: '#ffd700', borderWidth: 2, pointRadius: 0, tension: 0.15 }
+    ] },
+    options: { ...chartOpts }
+  });
+}
+function drawVar(N, m, U) {
+  const rs = [], vars = [];
+  for (let r = 1; r <= m; r++) { rs.push(r); vars.push(varianceTranslation(r, m, U)); }
+  if (charts.var) charts.var.destroy();
+  charts.var = new Chart(document.getElementById('chVar'), {
+    type: 'line',
+    data: { labels: rs, datasets: [{ label: 'σ²(r)  [§7.2]', data: vars, borderColor: '#ffd700', backgroundColor: 'rgba(255,215,0,0.1)', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: true }] },
+    options: { ...chartOpts, plugins: { ...chartOpts.plugins, legend: { display: false } } }
+  });
+}
+function drawEnvelope(N, m, p, U) {
+  const rs = [], means = [], lo = [], hi = [];
+  for (let r = 1; r <= m; r++) {
+    rs.push(r);
+    const mu = meanTranslation(r, p);
+    const s = Math.sqrt(varianceTranslation(r, m, U));
+    means.push(mu); lo.push(Math.max(0, mu - 2 * s)); hi.push(mu + 2 * s);
+  }
+  if (charts.env) charts.env.destroy();
+  charts.env = new Chart(document.getElementById('chEnv'), {
+    type: 'line',
+    data: { labels: rs, datasets: [
+      { label: 'E[X_r]', data: means, borderColor: '#4dabf7', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+      { label: '+2σ', data: hi, borderColor: 'rgba(77,171,247,0.5)', borderWidth: 1, pointRadius: 0, tension: 0.3, borderDash: [5, 5] },
+      { label: '−2σ', data: lo, borderColor: 'rgba(77,171,247,0.5)', borderWidth: 1, pointRadius: 0, tension: 0.3, borderDash: [5, 5], fill: '+1', backgroundColor: 'rgba(77,171,247,0.08)' }
+    ] },
+    options: { ...chartOpts }
+  });
+}
+function fillCompareTable(N, E, m, P, omega) {
+  const alphas = [0.10, 0.05, 0.02, 0.01, 0.005];
+  const tbody = document.getElementById('tbCompare');
+  let html = '';
+  alphas.forEach(a => {
+    const wN = naiveW(a, N, E, m, P, omega);
+    const wE = exactW(a, N, E, m, P, omega);
+    const ratio = wE !== null && wN > 0 ? (wE / wN).toFixed(2) : '—';
+    const riskAtNaive = exactRisk(wN, N, E, m, P, omega);
+    const isTarget = Math.abs(a - 0.01) < 1e-6;
+    const cls = isTarget ? 'highlight-target' : '';
+    const badge = isTarget ? ` <span class="badge badge-target">${t("badgeRef")}</span>` : '';
+    html += `<tr class="${cls}"><td>${a.toFixed(3)}${badge}</td><td>${wN}</td><td><strong>${wE === null ? '—' : wE}</strong></td><td>${ratio}</td><td>${riskAtNaive.toFixed(4)}</td></tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+function setLanguage(lang) {
+  currentLang = lang;
+  document.documentElement.lang = lang;
+  document.body.classList.toggle('rtl', lang === 'ar' || lang === 'he');
+  const meta = LANG_META[lang] || LANG_META.en;
+  document.getElementById('langFlag').textContent = meta.flag;
+  document.getElementById('langCode').textContent = meta.code;
+  document.querySelectorAll('.lang-item').forEach(el => el.classList.toggle('active', el.dataset.lang === lang));
+
+  document.getElementById('txtTitle').textContent = t('title');
+  document.getElementById('txtSub').textContent = t('sub');
+  document.getElementById('btnPresetArticle').textContent = t('presetArticle');
+  document.getElementById('btnPresetSmall').textContent = t('presetSmall');
+  document.getElementById('btnPresetTight').textContent = t('presetTight');
+  document.getElementById('btnPresetFriction').textContent = t('presetFriction');
+  document.getElementById('btnPresetNCHG').textContent = t('presetNCHG');
+  document.getElementById('btnPresetInfeasible').textContent = t('presetInfeasible');
+  document.getElementById('btnDraw').textContent = t('btnDraw');
+  document.getElementById('btnRecompute').textContent = t('btnRecompute');
+  document.getElementById('btnCSV').textContent = t('btnCSV');
+  document.getElementById('btnJSON').textContent = t('btnJSON');
+  document.getElementById('paramNameN').textContent = t('paramNameN');
+  document.getElementById('paramNameM').textContent = t('paramNameM');
+  document.getElementById('paramNameP').textContent = t('paramNameP');
+  document.getElementById('paramNameE').textContent = t('paramNameE');
+  document.getElementById('paramNameAlpha').textContent = t('paramNameAlpha');
+  document.getElementById('paramNameOmega').textContent = t('paramNameOmega');
+  document.getElementById('paramNameSeed').textContent = t('paramNameSeed');
+  document.getElementById('pillN').title = t('paramTipN');
+  document.getElementById('pillM').title = t('paramTipM');
+  document.getElementById('pillP').title = t('paramTipP');
+  document.getElementById('pillE').title = t('paramTipE');
+  document.getElementById('pillAlpha').title = t('paramTipAlpha');
+  document.getElementById('pillOmega').title = t('paramTipOmega');
+  document.getElementById('pillSeed').title = t('paramTipSeed');
+  document.getElementById('tabBtnShortlist').textContent = t('tabShortlist');
+  document.getElementById('tabBtnSizing').textContent = t('tabSizing');
+  document.getElementById('tabBtnTranslation').textContent = t('tabTranslation');
+  document.getElementById('tabBtnDiagnostic').textContent = t('tabDiagnostic');
+  document.getElementById('tabBtnFriction').textContent = t('tabFriction');
+  document.getElementById('tabBtnTables').textContent = t('tabTables');
+  document.getElementById('tabBtnLegend').textContent = t('tabLegend');
+  document.getElementById('shortlistTitle').innerHTML = t('shortlistTitle') + ' <span class="paper-ref">§1.2, Fig. 1</span>';
+  document.getElementById('shortlistStep1').textContent = t('shortlistStep1');
+  document.getElementById('shortlistStep2').textContent = t('shortlistStep2');
+  document.getElementById('shortlistStep3').textContent = t('shortlistStep3');
+  document.getElementById('shortlistStep4').textContent = t('shortlistStep4');
+  document.getElementById('legEligible').textContent = t('legEligible');
+  document.getElementById('legNonEligible').textContent = t('legNonEligible');
+  document.getElementById('legHole').textContent = t('legHole');
+  document.getElementById('legThreshold').textContent = t('legThreshold');
+  document.getElementById('legGain').textContent = t('legGain');
+  document.getElementById('chartDistTitle').innerHTML = t('chartDistTitle') + ' <span class="paper-ref">§2.2</span>';
+  document.getElementById('chartDistFoot').textContent = t('chartDistFoot');
+  document.getElementById('chartCompareTitle').innerHTML = t('chartCompareTitle') + ' <span class="paper-ref">Fig. 2</span>';
+  document.getElementById('chartCompareFoot').textContent = t('chartCompareFoot');
+  document.getElementById('chartSensTitle').innerHTML = t('chartSensTitle') + ' <span class="paper-ref">§10</span>';
+  document.getElementById('chartSensFoot').textContent = t('chartSensFoot');
+  document.getElementById('chartWStarTitle').innerHTML = t('chartWStarTitle') + ' <span class="paper-ref">Tab. 5</span>';
+  document.getElementById('chartWStarFoot').textContent = t('chartWStarFoot');
+  document.getElementById('chartVarTitle').innerHTML = t('chartVarTitle') + ' <span class="paper-ref">§7.2</span>';
+  document.getElementById('chartVarFoot').textContent = t('chartVarFoot');
+  document.getElementById('chartEnvTitle').innerHTML = t('chartEnvTitle') + ' <span class="paper-ref">§7.2</span>';
+  document.getElementById('chartEnvFoot').textContent = t('chartEnvFoot');
+  document.getElementById('diagScoreLabel').textContent = t('diagScore');
+  document.getElementById('gaugeFricTitle').textContent = t('gaugeFricTitle');
+  document.getElementById('gaugeFric2Title').textContent = t('gaugeFric2Title');
+  document.getElementById('gaugeVolTitle').textContent = t('gaugeVolTitle');
+  document.getElementById('zoneLow').textContent = t('zoneLow');
+  document.getElementById('zoneMid').textContent = t('zoneMid');
+  document.getElementById('zoneHigh').textContent = t('zoneHigh');
+  document.getElementById('zoneCrit').textContent = t('zoneCrit');
+  document.getElementById('diagRiskTitle').textContent = t('diagRiskTitle');
+  document.getElementById('diagRemedyTitle').textContent = t('diagRemedyTitle');
+  document.getElementById('infoFatalTitle').textContent = t('infoFatalTitle');
+  document.getElementById('infoFatalBody').textContent = t('infoFatalBody');
+  document.getElementById('fricScoreLabel').textContent = t('fricScoreLabel');
+  document.getElementById('fricInterpTitle').textContent = t('fricInterpTitle');
+  document.getElementById('fricRemedyTitle').textContent = t('fricRemedyTitle');
+  document.getElementById('infoFricTitle').textContent = t('infoFricTitle');
+  document.getElementById('infoFricBody').textContent = t('infoFricBody');
+  document.getElementById('tableCompareTitle').innerHTML = t('tableCompareTitle') + ' <span class="paper-ref">Tab. 5</span>';
+  document.getElementById('thAlpha').textContent = t('thAlpha');
+  document.getElementById('thNaive').textContent = t('thNaive');
+  document.getElementById('thExact').textContent = t('thExact');
+  document.getElementById('thRatio').textContent = t('thRatio');
+  document.getElementById('thRiskNaive').textContent = t('thRiskNaive');
+  document.getElementById('tableHolesTitle').innerHTML = t('tableHolesTitle') + ' <span class="paper-ref">§7</span>';
+  document.getElementById('thRank').textContent = t('thRank');
+  document.getElementById('thStatus').textContent = t('thStatus');
+  document.getElementById('thHolesAbove').textContent = t('thHolesAbove');
+  document.getElementById('thNewRank').textContent = t('thNewRank');
+  document.getElementById('thGain').textContent = t('thGain');
+  document.getElementById('tableInitTitle').textContent = t('tableInitTitle');
+  document.getElementById('thInitRank').textContent = t('thInitRank');
+  document.getElementById('thInitName').textContent = t('thInitName');
+  document.getElementById('thInitScore').textContent = t('thInitScore');
+  document.getElementById('thInitStatus').textContent = t('thInitStatus');
+  document.getElementById('tableFinalTitle').textContent = t('tableFinalTitle');
+  document.getElementById('thFinalNewRank').textContent = t('thFinalNewRank');
+  document.getElementById('thFinalName').textContent = t('thFinalName');
+  document.getElementById('thFinalScore').textContent = t('thFinalScore');
+  document.getElementById('thFinalGain').textContent = t('thFinalGain');
+  document.getElementById('legendTitle').textContent = t('legendTitle');
+  document.getElementById('legendInputTitle').textContent = t('legendInputTitle');
+  document.getElementById('legendDerivedTitle').textContent = t('legendDerivedTitle');
+  document.getElementById('legendDecisionsTitle').textContent = t('legendDecisionsTitle');
+  document.getElementById('fricBadgeLabel').textContent = t('fricLabel');
+
+  const btn = document.getElementById('btnToggleBar');
+  if (btn) { btn.textContent = barHidden ? t('btnShowBar') : t('btnHideBar'); btn.title = (barHidden ? t('btnShowBar') : t('btnHideBar')) + ' (H)'; }
+
+  if (current.N) {
+    const fric = computeFriction(current.N, current.m, current.P, current.E, current.p, current.U, current.HK);
+    updateFeasBadge(current.feasible, current.E, current.P);
+    updateFricBadge(fric);
+    const diag = computeInefficiency(current, fric);
+    renderDiagnostic(diag, fric);
+    renderVolumeGauge(diag.score);
+    renderShortlistVisualization();
+    renderHolesTable();
+    renderTranslationTables();
+    drawAllCharts();
+    updateVulgarization();
+    updatePedagogicalBanner();
+  }
+}
+
+function exportCSV() {
+  const c = current; if (!c.N) return;
+  let csv = `# Waitlist sizing simulator — companion to Hajji-Fakir (2025)\n`;
+  csv += `# Eq. (4.1): P(R_w > 0) = sum_{k=jmin}^{P-1} P(K=k) F_{N-m,E-k,w}(P-k-1)\n`;
+  csv += `# N=${c.N}, m=${c.m}, P=${c.P}, E=${c.E}, alpha=${c.alpha}, omega=${c.omega}\n`;
+  csv += `# E[K]=${c.muK.toFixed(4)}, sigma_K=${c.sigmaK.toFixed(4)}\n`;
+  csv += `# P(K<P)=${c.defRisk.toFixed(6)}, E[Delta]=${c.expDef.toFixed(4)}\n`;
+  csv += `# Naive w=${c.wN}, Exact w*=${c.wE === null ? 'infeasible' : c.wE}\n`;
+  csv += '\nmerit_rank,name,note,file_status,announced_rank,free_steps,holes_above,var_translation\n';
+  (shortlist || []).forEach(cd => {
+    csv += `${cd.rank},${cd.nom},${cd.note},${cd.eligible ? 'complete' : 'incomplete'},${cd.eligible ? cd.newRank : ''},${cd.eligible ? cd.gain : ''},${cd.holesAbove},${cd.var.toFixed(6)}\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `waitlist_N${c.N}_m${c.m}_P${c.P}_E${c.E}_w${c.omega}.csv`;
+  a.click();
+  showToast(t("toastCSV"));
+}
+function exportJSON() {
+  const c = current; if (!c.N) return;
+  const fric = computeFriction(c.N, c.m, c.P, c.E, c.p, c.U, c.HK);
+  const data = {
+    article: 'Hajji-Fakir (2025), Why Waitlists Need to Be Longer Than You Think',
+    equation: 'Eq. (4.1)',
+    params: { ...c, shortlist: undefined, conserves: undefined },
+    friction_heuristic: fric,
+    lang: currentLang,
+    timestamp: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `waitlist_N${c.N}_m${c.m}_P${c.P}_E${c.E}_w${c.omega}.json`;
+  a.click();
+  showToast(t("toastJSON"));
+}
+
+window.addEventListener('load', () => {
+  setLanguage('en');
+  drawShortlist();
+  let debTimer = null;
+  ['inN', 'inM', 'inP', 'inE', 'inAlpha', 'inOmega', 'inSeed'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      clearTimeout(debTimer);
+      const delay = window.__spinActive ? 40 : 220;
+      debTimer = setTimeout(() => {
+        if (id === 'inSeed' || id === 'inN' || id === 'inM' || id === 'inE' || id === 'inOmega') drawShortlist();
+        else computeAll();
+      }, delay);
+    });
+    el.addEventListener('change', () => {
+      if (id === 'inSeed' || id === 'inN' || id === 'inM' || id === 'inE' || id === 'inOmega') drawShortlist();
+      else computeAll();
+    });
+  });
+  const btn = document.getElementById('scrollTopBtn');
+  window.addEventListener('scroll', () => btn.classList.toggle('show', window.scrollY > 240), { passive: true });
+  window.addEventListener('resize', () => { Object.values(charts).forEach(c => { try { c.resize(); } catch (err) {} }); });
+});
+</script>
+
+</body>
+</html>
