@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Waitlist Sizing Simulator — companion to Hajji-Fakir (2025)</title>
+<title>Waitlist Sizing Simulator — companion to Hajji-Fakir (2026)</title>
+<meta name="description" content="Interactive companion to 'From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification' (Hajji-Fakir, 2026, Section: Teacher's Corner).">
+<meta name="author" content="Ali Hajji-Fakir">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -84,9 +86,6 @@
   }
   .sticky-header.alarm-mode { border-bottom-color: #ff2a2a; }
 
-  /* ============================================================
-     RANGÉE 1 : ONGLETS + LANG SELECT + BOUTON HIDE
-     ============================================================ */
   .tabs {
     display: flex; gap: 8px; padding: 6px 0 10px 0;
     overflow-x: auto; flex-wrap: wrap;
@@ -148,10 +147,13 @@
     border-color: #8a6a2a; color: #ffd700;
   }
   .tab-btn.toggle-bar:hover { background: linear-gradient(180deg, #7a5a2a, #4a3a1a); border-color: #b08a3a; color: #ffe060; }
+  .tab-btn.pdf-btn {
+    background: linear-gradient(180deg, #4a2a1a, #2a1a0a);
+    border-color: #8a4a2a; color: #ffb080;
+    text-decoration: none;
+  }
+  .tab-btn.pdf-btn:hover { background: linear-gradient(180deg, #6a3a1a, #3a2a0a); border-color: #b06a3a; color: #ffd0a0; }
 
-  /* ============================================================
-     LANG SELECT
-     ============================================================ */
   .lang-select-wrap { position: relative; z-index: 200; }
   .lang-select-btn {
     display: inline-flex; align-items: center; gap: 7px;
@@ -213,9 +215,6 @@
   .lang-item .li-code { font-family: 'Courier New', monospace; font-size: 0.66rem; color: #7a8a9a; font-weight: 800; letter-spacing: 0.5px; }
   .lang-item.active .li-code { color: #ffd700; }
 
-  /* ============================================================
-     PARAMS
-     ============================================================ */
   .params-row {
     display: flex; align-items: flex-start; gap: 8px;
     padding: 10px 0; flex-wrap: wrap;
@@ -284,13 +283,10 @@
   .spin-btn.plus  { border-left: 1px solid #2a3a5a; }
   .param-control.spin-flash input[type="number"] { animation: valueFlash 0.35s ease; }
 
-  /* ============================================================
-     HEADER
-     ============================================================ */
   .header-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; flex-wrap: wrap; border-bottom: 1px solid #1f2a3a; }
   .header-row h1 { font-size: 1rem; color: #8ab4f8; font-weight: 700; white-space: nowrap; }
   .header-row h1 .sub { color: #7a8a9a; font-weight: 400; font-size: 0.78rem; margin-left: 6px; }
-  .presets, .actions { display: flex; gap: 5px; flex-wrap: wrap; }
+  .presets, .actions { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
   .header-row button {
     background: #232c3d; color: #e0e6ed; border: 1px solid #3a4a6a;
     padding: 5px 10px; border-radius: 6px; font-size: 0.76rem;
@@ -310,9 +306,6 @@
   .header-row button.preset.nchg:hover { background: #6a3a8a; }
   .header-row .spacer { flex: 1; }
 
-  /* ============================================================
-     STATS
-     ============================================================ */
   .stats-row { display: flex; align-items: center; flex-wrap: wrap; padding: 6px 0 8px 0; }
   .stats-inline { display: flex; gap: 5px; flex-wrap: wrap; margin-left: auto; align-items: center; }
   .stat-pill {
@@ -376,9 +369,6 @@
   .card { background: #141b26; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
   .card h3 { color: #b0c4de; margin: 0 0 10px 0; border-bottom: 1px solid #2a3a5a; padding-bottom: 6px; font-size: 0.92rem; font-weight: 600; }
 
-  /* ============================================================
-     PAPER REFERENCE BADGES
-     ============================================================ */
   .paper-ref {
     display: inline-block;
     font-family: 'Courier New', monospace;
@@ -424,6 +414,8 @@
     color: #ffd700;
     font-size: 0.78rem;
   }
+  .paper-note a { color: #ffd700; text-decoration: underline; }
+  .paper-note a:hover { color: #ffe060; }
 
   .pedago-banner {
     background: linear-gradient(135deg, #0a1e2a 0%, #05141c 100%);
@@ -726,6 +718,28 @@
   .toast.danger { background: #7a0a0a; border-color: #ff2a2a; }
   .toast.fric { background: #5a3a1a; border-color: #f2a365; }
 
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  .site-footer {
+    margin-top: 30px; padding: 20px 16px;
+    border-top: 1px solid #2a3a5a;
+    font-size: 0.78rem; color: #7a8a9a;
+    text-align: center; line-height: 1.75;
+    background: linear-gradient(180deg, transparent, rgba(20,27,38,0.4));
+  }
+  .site-footer .ft-title { color: #8ab4f8; font-weight: 800; font-size: 0.88rem; letter-spacing: 0.2px; }
+  .site-footer .ft-sub { margin-top: 4px; font-size: 0.72rem; color: #7a8a9a; }
+  .site-footer .ft-links { margin-top: 8px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .site-footer a {
+    color: #8ab4f8; text-decoration: none; padding: 4px 10px;
+    border: 1px solid #2a4a7a; border-radius: 6px; font-weight: 600;
+    transition: all 0.15s;
+  }
+  .site-footer a:hover { background: #1a3a5a; border-color: #4a7db5; color: #ffffff; }
+  .site-footer .ft-note { margin-top: 10px; font-size: 0.68rem; color: #5a6a7a; line-height: 1.6; }
+  .site-footer .ft-note em { color: #f2a365; font-style: normal; font-weight: 600; }
+
   body.bar-hidden .header-row,
   body.bar-hidden .stats-row { display: none; }
   body.bar-hidden .params-row-always { border-bottom: none; }
@@ -783,6 +797,8 @@
     <button class="tab-btn" data-tab="legend" id="tabBtnLegend">📖 Legend</button>
 
     <div class="tabs-right-group">
+      <a href="main.pdf" download class="tab-btn pdf-btn" title="Download the main article PDF" id="btnMainPdf">📄 Article PDF</a>
+      <a href="supplementary.pdf" download class="tab-btn pdf-btn" title="Download the supplementary material PDF" id="btnSuppPdf">📎 Supplementary</a>
       <div class="lang-select-wrap">
         <button class="lang-select-btn" id="langSelectBtn" onclick="toggleLangMenu(event)" title="Language">
           <span class="lang-flag" id="langFlag">🇬🇧</span>
@@ -855,7 +871,7 @@
         <input type="number" id="inOmega" value="1.0" min="0.2" max="5.0" step="0.1">
         <button type="button" class="spin-btn plus" data-target="inOmega" data-dir="1" aria-label="Increase omega">+</button>
       </div>
-      <label><span class="sym">ω</span><span class="name" id="paramNameOmega">Odds ratio (Sec. 10)</span></label>
+      <label><span class="sym">ω</span><span class="name" id="paramNameOmega">Odds ratio (§10)</span></label>
     </div>
 
     <div class="param-pill" id="pillSeed">
@@ -869,10 +885,10 @@
   </div>
 
   <div class="header-row">
-    <h1><span id="txtTitle">Waitlist Sizing</span> <span class="sub" id="txtSub">— companion to Hajji-Fakir (2025)</span></h1>
+    <h1><span id="txtTitle">Waitlist Sizing</span> <span class="sub" id="txtSub">— companion to Hajji-Fakir (2026)</span></h1>
     <div class="presets">
       <button class="preset" id="btnPresetArticle" onclick="loadPreset('article')">📄 Article</button>
-      <button class="preset" id="btnPresetSmall" onclick="loadPreset('small')">🧪 Small (Sec. 5)</button>
+      <button class="preset" id="btnPresetSmall" onclick="loadPreset('small')">🧪 Small (§5)</button>
       <button class="preset" id="btnPresetTight" onclick="loadPreset('tight')">⚡ Tight</button>
       <button class="preset fric" id="btnPresetFriction" onclick="loadPreset('highfriction')">🟠 Friction</button>
       <button class="preset nchg" id="btnPresetNCHG" onclick="loadPreset('nchg')">🎲 Correlated (ω≠1)</button>
@@ -894,7 +910,7 @@
       <span class="stat-pill pink">E[Δ]=<b id="stDeficit">—</b><span class="ref">§2</span></span>
       <span class="stat-pill pink">w_naive=<b id="stNaive">—</b><span class="ref">§3</span></span>
       <span class="stat-pill gold">w*=<b id="stExact">—</b><span class="ref">Eq. 4.1</span></span>
-      <span class="stat-pill gold">ratio=<b id="stRatio">—</b><span class="ref">Tab. 5</span></span>
+      <span class="stat-pill gold">ratio=<b id="stRatio">—</b><span class="ref">Tab. 2</span></span>
       <span class="stat-pill orange">E[L]=<b id="stEL">—</b></span>
       <span class="stat-pill purple">U=<b id="stU">—</b></span>
       <span class="stat-pill purple">U/m=<b id="stElimRate">—</b></span>
@@ -920,7 +936,7 @@
   <section class="tab-panel active" data-tab="shortlist">
     <div class="pedago-banner" id="pedagoBanner">
       <span class="pb-icon">📘</span>
-      <span id="pedagoText">Companion to <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025). The exact rule is Equation (4.1); the naive rule checks the wrong event.</span>
+      <span id="pedagoText">Companion to <em>From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification</em> (Hajji-Fakir, 2026, Section: Teacher's Corner). The exact rule is Equation (4.1); the naive rule checks the wrong event.</span>
     </div>
 
     <div class="paper-note">
@@ -999,7 +1015,7 @@
         </div>
       </div>
       <div class="chart-card-compact">
-        <h3 id="chartWStarTitle">🎯 w* vs α <span class="paper-ref">Tab. 5</span></h3>
+        <h3 id="chartWStarTitle">🎯 w* vs α <span class="paper-ref">Tab. 2</span></h3>
         <div class="chart-container-compact"><canvas id="chWStar"></canvas></div>
         <div class="foot" id="chartWStarFoot">Minimum w with P(R_w &gt; 0) ≤ α</div>
         <div class="vulgar-box" id="vulgarWStar">
@@ -1222,7 +1238,7 @@
   <section class="tab-panel" data-tab="tables">
     <div class="tables-grid" style="margin-bottom:14px;">
       <div class="table-wrap">
-        <h3 id="tableCompareTitle">📋 Naive vs exact <span class="paper-ref">Tab. 5</span></h3>
+        <h3 id="tableCompareTitle">📋 Naive vs exact <span class="paper-ref">Tab. 2</span></h3>
         <table>
           <thead><tr>
             <th id="thAlpha">Target α</th>
@@ -1291,10 +1307,30 @@
       <div class="legend-grid" id="legendGridDecisions"></div>
     </div>
     <div class="paper-note">
-      <span class="pn-title">Article reference</span>
-      A. Hajji-Fakir (2025). <em>Why Waitlists Need to Be Longer Than You Think: A Note on Deferred Verification.</em> Section: Teacher's Corner. All numbered references (§, Eq., Prop., Cor., Tab., Fig., Sec.) point to the article. Items marked <strong>heuristic</strong> are simulator-specific constructs, not part of the paper.
+      <span class="pn-title">Article reference · v1.0 · 2026-10-03</span>
+      A. Hajji-Fakir (2026). <em>From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification.</em> Section: Teacher's Corner. All numbered references (§, Eq., Prop., Cor., Tab., Fig., Sec.) point to the article.
+      <br><br>
+      <strong>Full article (PDF):</strong> <a href="main.pdf">main.pdf</a> &nbsp;·&nbsp;
+      <strong>Supplementary material:</strong> <a href="supplementary.pdf">supplementary.pdf</a>
+      <br>
+      Items marked <strong>heuristic</strong> are simulator-specific constructs, not part of the paper.
     </div>
   </section>
+
+  <footer class="site-footer">
+    <div class="ft-title">From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification</div>
+    <div class="ft-sub">A. Hajji-Fakir · Independent Researcher · <span style="color:#ffd700;">v1.0 — 2026-10-03</span> · Section: Teacher's Corner</div>
+    <div class="ft-links">
+      <a href="main.pdf" download>📄 main.pdf</a>
+      <a href="supplementary.pdf" download>📎 supplementary.pdf</a>
+      <a href="https://alihajjifakir.github.io/Waitlists/">🌐 Website</a>
+      <a href="https://github.com/alihajjifakir/Waitlists">💻 Source</a>
+    </div>
+    <div class="ft-note">
+      Interactive companion simulator to the article. Items marked <em>heuristic</em> are simulator-specific constructs, not part of the article's theorems.<br>
+      Equation (4.1) — <code>P(R_w &gt; 0) = Σ_{k=j_min}^{P-1} P(K=k) · F_{N-m, E-k, w}(P-k-1)</code>
+    </div>
+  </footer>
 
 </main>
 
@@ -1302,15 +1338,15 @@
 
 <script>
 /* ============================================================
-   I18N — keep short; the article reference layer is the same in all languages
+   I18N — companion to Hajji-Fakir (2026)
    ============================================================ */
 const I18N = {
   en: {
-    title: "Waitlist Sizing", sub: "— companion to Hajji-Fakir (2025)",
-    presetArticle: "📄 Article", presetSmall: "🧪 Small (Sec. 5)", presetTight: "⚡ Tight", presetFriction: "🟠 Friction", presetNCHG: "🎲 Correlated (ω≠1)", presetInfeasible: "🚨 Infeasible (E<P)",
+    title: "Waitlist Sizing", sub: "— companion to Hajji-Fakir (2026)",
+    presetArticle: "📄 Article", presetSmall: "🧪 Small (§5)", presetTight: "⚡ Tight", presetFriction: "🟠 Friction", presetNCHG: "🎲 Correlated (ω≠1)", presetInfeasible: "🚨 Infeasible (E<P)",
     btnDraw: "🎲 Draw", btnRecompute: "🔄 Recompute", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
     btnHideBar: "⬆ Hide", btnShowBar: "⬇ Show",
-    paramNameN: "Applications", paramNameM: "Exam-passed", paramNameP: "Positions", paramNameE: "Valid files (pop.)", paramNameAlpha: "Target risk", paramNameOmega: "Odds ratio (Sec. 10)", paramNameSeed: "Random seed",
+    paramNameN: "Applications", paramNameM: "Exam-passed", paramNameP: "Positions", paramNameE: "Valid files (pop.)", paramNameAlpha: "Target risk", paramNameOmega: "Odds ratio (§10)", paramNameSeed: "Random seed",
     paramTipN: "N — Total number of applications received (§2.1)",
     paramTipM: "m — Candidates who passed the written and oral exams (§2.1)",
     paramTipP: "P — Number of positions to be filled (§2.1)",
@@ -1380,14 +1416,14 @@ const I18N = {
     fricMetricElim: "Incomplete-file rate U/m", fricMetricH: "Entropy H(K)/log|supp|", fricMetricHpp: "Holes per position E[U]/P", fricMetricVar: "Median volatility σ²(r*)",
     toastCSV: "CSV exported", toastJSON: "JSON exported",
     toastBarHidden: "Title & stats hidden — tabs and parameters stay visible (H to restore)",
-    pedagoFeasible: "Companion to <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025). The exact rule is Equation (4.1); the naive rule checks the wrong event.",
+    pedagoFeasible: "Companion to <em>From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification</em> (Hajji-Fakir, 2026, Section: Teacher's Corner). The exact rule is Equation (4.1); the naive rule checks the wrong event.",
     pedagoHalf: "📐 <strong>Half the sessions end in deficit:</strong> E[K] ≈ P here, so the case study's warning applies directly — see §6 of the article.",
     pedagoOmega: "🎲 <strong>Noncentral hypergeometric mode active (ω = {omega}):</strong> K follows NCHG(N, E, m, ω). The conditional law of K_w | k is unchanged, so Eq. (4.1) still holds — see §10 and Exercise 7.",
     pedagoInfeasible: "🚨 <strong>E &lt; P:</strong> by Corollary 4.2, no finite waitlist can achieve the target. The only remedies are to enlarge E or reduce P.",
     pedagoEq41: "Eq. (4.1)"
   },
   fr: {
-    title: "Dimensionnement de liste d'attente", sub: "— compagnon de Hajji-Fakir (2025)",
+    title: "Dimensionnement de liste d'attente", sub: "— compagnon de Hajji-Fakir (2026)",
     presetArticle: "📄 Article", presetSmall: "🧪 Petit (§5)", presetTight: "⚡ Serré", presetFriction: "🟠 Friction", presetNCHG: "🎲 Corrélé (ω≠1)", presetInfeasible: "🚨 Infaisable (E<P)",
     btnDraw: "🎲 Tirage", btnRecompute: "🔄 Recalculer", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
     btnHideBar: "⬆ Masquer", btnShowBar: "⬇ Afficher",
@@ -1453,14 +1489,14 @@ const I18N = {
     fricMetricElim: "Taux U/m", fricMetricH: "H(K)/log|supp|", fricMetricHpp: "Trous / poste", fricMetricVar: "σ²(r*)",
     toastCSV: "CSV exporté", toastJSON: "JSON exporté",
     toastBarHidden: "Titre & stats masqués (H pour restaurer)",
-    pedagoFeasible: "Compagnon de <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025).",
+    pedagoFeasible: "Compagnon de <em>From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification</em> (Hajji-Fakir, 2026, Section: Teacher's Corner).",
     pedagoHalf: "📐 <strong>La moitié des sessions finit en déficit :</strong> E[K] ≈ P — voir §6 de l'article.",
     pedagoOmega: "🎲 <strong>Mode hypergéométrique non centré (ω = {omega}) :</strong> K ~ NCHG(N, E, m, ω) — voir §10 et exercice 7.",
     pedagoInfeasible: "🚨 <strong>E &lt; P :</strong> par le Corollaire 4.2, aucune liste ne peut atteindre la cible.",
     pedagoEq41: "Éq. (4.1)"
   },
   de: {
-    title: "Wartelisten-Bemessung", sub: "— Begleiter zu Hajji-Fakir (2025)",
+    title: "Wartelisten-Bemessung", sub: "— Begleiter zu Hajji-Fakir (2026)",
     presetArticle: "📄 Artikel", presetSmall: "🧪 Klein (§5)", presetTight: "⚡ Eng", presetFriction: "🟠 Reibung", presetNCHG: "🎲 Korreliert (ω≠1)", presetInfeasible: "🚨 Undurchführbar (E<P)",
     btnDraw: "🎲 Ziehen", btnRecompute: "🔄 Neu berechnen", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
     btnHideBar: "⬆ Ausblenden", btnShowBar: "⬇ Einblenden",
@@ -1524,14 +1560,14 @@ const I18N = {
     fricMetricElim: "U/m", fricMetricH: "H(K)/log|supp|", fricMetricHpp: "Lücken/Stelle", fricMetricVar: "σ²(r*)",
     toastCSV: "CSV exportiert", toastJSON: "JSON exportiert",
     toastBarHidden: "Titel & Stats ausgeblendet (H zum Wiederherstellen)",
-    pedagoFeasible: "Begleiter zu <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025).",
+    pedagoFeasible: "Begleiter zu <em>From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification</em> (Hajji-Fakir, 2026, Section: Teacher's Corner).",
     pedagoHalf: "📐 <strong>Halbzeit-Defizit:</strong> E[K] ≈ P — siehe §6.",
     pedagoOmega: "🎲 <strong>Noncentral-Modus (ω = {omega}):</strong> siehe §10.",
     pedagoInfeasible: "🚨 <strong>E &lt; P:</strong> Korollar 4.2 — kein w genügt.",
     pedagoEq41: "Gl. (4.1)"
   },
   es: {
-    title: "Dimensionamiento de lista", sub: "— compañero de Hajji-Fakir (2025)",
+    title: "Dimensionamiento de lista", sub: "— compañero de Hajji-Fakir (2026)",
     presetArticle: "📄 Artículo", presetSmall: "🧪 Pequeño (§5)", presetTight: "⚡ Ajustado", presetFriction: "🟠 Fricción", presetNCHG: "🎲 Correlado (ω≠1)", presetInfeasible: "🚨 Inviable (E<P)",
     btnDraw: "🎲 Sortear", btnRecompute: "🔄 Recalcular", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
     btnHideBar: "⬆ Ocultar", btnShowBar: "⬇ Mostrar",
@@ -1591,14 +1627,14 @@ const I18N = {
     fricMetricElim: "U/m", fricMetricH: "H/log", fricMetricHpp: "Huecos/puesto", fricMetricVar: "σ²(r*)",
     toastCSV: "CSV exportado", toastJSON: "JSON exportado",
     toastBarHidden: "Oculto (H para restaurar)",
-    pedagoFeasible: "Compañero de <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025).",
+    pedagoFeasible: "Compañero de <em>From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification</em> (Hajji-Fakir, 2026, Section: Teacher's Corner).",
     pedagoHalf: "📐 <strong>Mitad de sesiones con déficit:</strong> E[K] ≈ P — §6.",
     pedagoOmega: "🎲 <strong>Modo no central (ω = {omega}):</strong> §10.",
     pedagoInfeasible: "🚨 <strong>E &lt; P:</strong> Cor. 4.2 — ningún w cumple.",
     pedagoEq41: "Ec. (4.1)"
   },
   ar: {
-    title: "تحديد حجم قائمة الانتظار", sub: "— مرافق لـ Hajji-Fakir (2025)",
+    title: "تحديد حجم قائمة الانتظار", sub: "— مرافق لـ Hajji-Fakir (2026)",
     presetArticle: "📄 المقال", presetSmall: "🧪 صغير (§5)", presetTight: "⚡ ضيق", presetFriction: "🟠 احتكاك", presetNCHG: "🎲 مرتبط (ω≠1)", presetInfeasible: "🚨 غير ممكن (E<P)",
     btnDraw: "🎲 سحب", btnRecompute: "🔄 إعادة حساب", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
     btnHideBar: "⬆ إخفاء", btnShowBar: "⬇ إظهار",
@@ -1658,14 +1694,14 @@ const I18N = {
     fricMetricElim: "U/m", fricMetricH: "H/log", fricMetricHpp: "فراغات/منصب", fricMetricVar: "σ²(r*)",
     toastCSV: "تم تصدير CSV", toastJSON: "تم تصدير JSON",
     toastBarHidden: "مخفي (H للاستعادة)",
-    pedagoFeasible: "مرافق لـ <em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025).",
+    pedagoFeasible: "مرافق لـ <em>From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification</em> (Hajji-Fakir, 2026).",
     pedagoHalf: "📐 <strong>نصف الجلسات بعجز:</strong> E[K] ≈ P — §6.",
     pedagoOmega: "🎲 <strong>الوضع غير المركزي (ω = {omega}):</strong> §10.",
     pedagoInfeasible: "🚨 <strong>E &lt; P:</strong> النتيجة 4.2 — لا يوجد w.",
     pedagoEq41: "المعادلة (4.1)"
   },
   he: {
-    title: "תמחור רשימת המתנה", sub: "— מלווה ל-Hajji-Fakir (2025)",
+    title: "תמחור רשימת המתנה", sub: "— מלווה ל-Hajji-Fakir (2026)",
     presetArticle: "📄 מאמר", presetSmall: "🧪 קטן (§5)", presetTight: "⚡ צמוד", presetFriction: "🟠 חיכוך", presetNCHG: "🎲 מתואם (ω≠1)", presetInfeasible: "🚨 בלתי אפשרי (E<P)",
     btnDraw: "🎲 הגרלה", btnRecompute: "🔄 חשב מחדש", btnCSV: "⬇ CSV", btnJSON: "⬇ JSON",
     btnHideBar: "⬆ הסתר", btnShowBar: "⬇ הצג",
@@ -1725,7 +1761,7 @@ const I18N = {
     fricMetricElim: "U/m", fricMetricH: "H/log", fricMetricHpp: "חורים/משרה", fricMetricVar: "σ²(r*)",
     toastCSV: "CSV יוצא", toastJSON: "JSON יוצא",
     toastBarHidden: "מוסתר (H לשחזור)",
-    pedagoFeasible: "מלווה ל-<em>Why Waitlists Need to Be Longer Than You Think</em> (Hajji-Fakir, 2025).",
+    pedagoFeasible: "מלווה ל-<em>From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification</em> (Hajji-Fakir, 2026, Section: Teacher's Corner).",
     pedagoHalf: "📐 <strong>חצי מהמפגשים בגירעון:</strong> E[K] ≈ P — §6.",
     pedagoOmega: "🎲 <strong>מצב לא-מרכזי (ω = {omega}):</strong> §10.",
     pedagoInfeasible: "🚨 <strong>E &lt; P:</strong> מסקנה 4.2.",
@@ -1780,7 +1816,6 @@ function hypergeomCDF(k, N, E, m) {
   return Math.min(s, 1);
 }
 
-/* Noncentral hypergeometric (Fisher) — §10 */
 function nchgPMF(k, N, E, m, omega) {
   if (!isFinite(omega) || omega <= 0 || Math.abs(omega - 1) < 1e-12) return hypergeomPMF(k, N, E, m);
   const jmin = Math.max(0, m - (N - E));
@@ -1825,7 +1860,6 @@ function exactRisk(w, N, E, m, P, omega = 1) {
   for (let k = jmin; k <= kUp; k++) {
     const pk = pmfK(k, N, E, m, omega);
     if (pk < 1e-300) continue;
-    /* Conditional law of K_w | k is UNCHANGED by omega (§10). */
     s += pk * hypergeomCDF(P - k - 1, N - m, E - k, w);
   }
   return Math.min(s, 1);
@@ -1913,9 +1947,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-/* ============================================================
-   LANGUAGE DROPDOWN
-   ============================================================ */
 function positionLangMenu() {
   const menu = document.getElementById('langMenu');
   const btn = document.getElementById('langSelectBtn');
@@ -1964,9 +1995,6 @@ window.addEventListener('resize', () => {
   if (menu && menu.classList.contains('open')) positionLangMenu();
 });
 
-/* ============================================================
-   SPIN BUTTONS
-   ============================================================ */
 window.__spinActive = false;
 function spinParam(inputId, direction) {
   const input = document.getElementById(inputId);
@@ -2011,9 +2039,6 @@ document.querySelectorAll('.spin-btn').forEach(btn => {
   btn.addEventListener('mousedown', (e) => e.preventDefault());
 });
 
-/* ============================================================
-   BAR TOGGLE
-   ============================================================ */
 let barHidden = false;
 function toggleBar() {
   barHidden = !barHidden;
@@ -2031,22 +2056,13 @@ document.addEventListener('keydown', (e) => {
   toggleBar();
 });
 
-/* ============================================================
-   PRESETS — aligned with the article
-   ============================================================ */
 function loadPreset(name) {
   const presets = {
-    /* §6 — main numerical illustration */
     article:       { N: 743, m: 296, P: 146, E: 366, alpha: 0.01, omega: 1.0, seed: 42 },
-    /* §5 — small blackboard anchor (40,6,3,15) */
     small:         { N:  40, m:   6, P:   3, E:  15, alpha: 0.10, omega: 1.0, seed:  7 },
-    /* tight but feasible */
     tight:         { N: 500, m: 120, P:  60, E:  65, alpha: 0.01, omega: 1.0, seed:  3 },
-    /* friction demo: high U/m but feasible */
     highfriction:  { N: 500, m: 200, P:  50, E: 350, alpha: 0.01, omega: 1.0, seed:  8 },
-    /* §10 — correlated merit (ω = 0.8: negative correlation) */
     nchg:          { N: 743, m: 296, P: 146, E: 366, alpha: 0.01, omega: 0.8, seed: 11 },
-    /* E < P: infeasible */
     infeasible:    { N: 800, m: 200, P: 150, E: 120, alpha: 0.01, omega: 1.0, seed:  5 }
   };
   const p = presets[name]; if (!p) return;
@@ -2101,9 +2117,6 @@ function drawShortlist() {
   const eligibleIdx = new Set();
   let attempts = 0;
   while (eligibleIdx.size < E && attempts < N * 20) { eligibleIdx.add(Math.floor(rand() * N)); attempts++; }
-  /* Weighted sampling of the shortlist to reflect merit–eligibility correlation (§10).
-     ω > 1 makes eligible candidates more likely to reach the shortlist,
-     ω < 1 makes them less likely. When ω = 1, this collapses to uniform sampling. */
   const shortlistIdx = new Set();
   attempts = 0;
   const eligibleArr = Array.from(eligibleIdx);
@@ -2272,8 +2285,6 @@ function computeAll() {
   const omega = parseFloat(document.getElementById('inOmega').value) || 1;
   if (E < 0 || E > N || m > N || P > m) return;
   const p = E / N;
-  /* E[K] and Var(K) under noncentral hypergeometric are not closed-form;
-     we report the hypergeometric moment as an approximation and flag ω ≠ 1. */
   const muK = m * p;
   const varK = m * p * (1 - p) * (N - m) / (N - 1);
   const sigmaK = Math.sqrt(varK);
@@ -2342,7 +2353,6 @@ function updateFeasBadge(feasible, E, P) {
     else if (margin < 0.3) { badge.classList.add('tight'); badge.querySelector('.icon').textContent = '🟡'; txtEl.textContent = t('feasTxt'); lvl.textContent = t('lvlModerate'); }
     else { badge.classList.add('ok'); badge.querySelector('.icon').textContent = '✅'; txtEl.textContent = t('feasTxt'); lvl.textContent = t('lvlOK'); }
   }
-  /* ω indicator */
   const omegaPill = document.getElementById('pillOmega');
   if (omegaPill) omegaPill.classList.toggle('omega-active', Math.abs(current.omega - 1) > 1e-9);
 }
@@ -2680,6 +2690,9 @@ function setLanguage(lang) {
   document.getElementById('langCode').textContent = meta.code;
   document.querySelectorAll('.lang-item').forEach(el => el.classList.toggle('active', el.dataset.lang === lang));
 
+  /* Update the browser tab title to match the current language */
+  document.title = t('title') + " — companion to Hajji-Fakir (2026)";
+
   document.getElementById('txtTitle').textContent = t('title');
   document.getElementById('txtSub').textContent = t('sub');
   document.getElementById('btnPresetArticle').textContent = t('presetArticle');
@@ -2729,7 +2742,7 @@ function setLanguage(lang) {
   document.getElementById('chartCompareFoot').textContent = t('chartCompareFoot');
   document.getElementById('chartSensTitle').innerHTML = t('chartSensTitle') + ' <span class="paper-ref">§10</span>';
   document.getElementById('chartSensFoot').textContent = t('chartSensFoot');
-  document.getElementById('chartWStarTitle').innerHTML = t('chartWStarTitle') + ' <span class="paper-ref">Tab. 5</span>';
+  document.getElementById('chartWStarTitle').innerHTML = t('chartWStarTitle') + ' <span class="paper-ref">Tab. 2</span>';
   document.getElementById('chartWStarFoot').textContent = t('chartWStarFoot');
   document.getElementById('chartVarTitle').innerHTML = t('chartVarTitle') + ' <span class="paper-ref">§7.2</span>';
   document.getElementById('chartVarFoot').textContent = t('chartVarFoot');
@@ -2752,7 +2765,7 @@ function setLanguage(lang) {
   document.getElementById('fricRemedyTitle').textContent = t('fricRemedyTitle');
   document.getElementById('infoFricTitle').textContent = t('infoFricTitle');
   document.getElementById('infoFricBody').textContent = t('infoFricBody');
-  document.getElementById('tableCompareTitle').innerHTML = t('tableCompareTitle') + ' <span class="paper-ref">Tab. 5</span>';
+  document.getElementById('tableCompareTitle').innerHTML = t('tableCompareTitle') + ' <span class="paper-ref">Tab. 2</span>';
   document.getElementById('thAlpha').textContent = t('thAlpha');
   document.getElementById('thNaive').textContent = t('thNaive');
   document.getElementById('thExact').textContent = t('thExact');
@@ -2801,7 +2814,8 @@ function setLanguage(lang) {
 
 function exportCSV() {
   const c = current; if (!c.N) return;
-  let csv = `# Waitlist sizing simulator — companion to Hajji-Fakir (2025)\n`;
+  let csv = `# Waitlist sizing simulator — companion to Hajji-Fakir (2026)\n`;
+  csv += `# From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification (Section: Teacher's Corner)\n`;
   csv += `# Eq. (4.1): P(R_w > 0) = sum_{k=jmin}^{P-1} P(K=k) F_{N-m,E-k,w}(P-k-1)\n`;
   csv += `# N=${c.N}, m=${c.m}, P=${c.P}, E=${c.E}, alpha=${c.alpha}, omega=${c.omega}\n`;
   csv += `# E[K]=${c.muK.toFixed(4)}, sigma_K=${c.sigmaK.toFixed(4)}\n`;
@@ -2822,7 +2836,9 @@ function exportJSON() {
   const c = current; if (!c.N) return;
   const fric = computeFriction(c.N, c.m, c.P, c.E, c.p, c.U, c.HK);
   const data = {
-    article: 'Hajji-Fakir (2025), Why Waitlists Need to Be Longer Than You Think',
+    article: 'Hajji-Fakir (2026), From Deficit to Residual Deficit: A Hypergeometric Trap in Deferred Verification',
+    section: "Teacher's Corner",
+    version: 'v1.0 (2026-10-03)',
     equation: 'Eq. (4.1)',
     params: { ...c, shortlist: undefined, conserves: undefined },
     friction_heuristic: fric,
